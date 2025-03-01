@@ -14,17 +14,19 @@
 
 
 // db.js
-const mysql = require('mysql2/promise');
 
 // Buat koneksi baru untuk setiap request (penting untuk serverless)
+const mysql = require('mysql2/promise');
+
 async function connectDB() {
   try {
     const connection = await mysql.createConnection({
-      host: process.env.DB_HOST,
+      host: process.env.DB_HOST, // Host InfinityFree Anda
       user: process.env.DB_USER,
       password: process.env.DB_PASSWORD,
       database: process.env.DB_NAME,
-      ssl: {rejectUnauthorized: true}
+      ssl: false, // InfinityFree biasanya tidak mendukung SSL
+      connectTimeout: 10000 // Tambahkan timeout yang lebih lama
     });
     return connection;
   } catch (error) {
@@ -32,5 +34,3 @@ async function connectDB() {
     throw error;
   }
 }
-
-module.exports = { connectDB };

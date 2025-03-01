@@ -16,6 +16,13 @@ const patientRoutes = require('./routes/patientRoutes');
 const testGlucosaRoutes = require('./routes/testGlucosaRoutes');
 const db = require('./config/db');
 
+// Letakkan log ini di awal file setelah import
+console.log('Attempting database connection with:', {
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    database: process.env.DB_NAME
+  });
+
 const app = express(); // Inisialisasi aplikasi Express
 const PORT = process.env.PORT || 3000;
 
