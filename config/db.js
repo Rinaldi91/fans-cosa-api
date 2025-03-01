@@ -13,19 +13,24 @@
 // module.exports = pool.promise();
 
 
-const mysql = require('mysql2');
-require('dotenv').config();
+// db.js
+const mysql = require('mysql2/promise');
 
-const pool = mysql.createPool({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-  port: process.env.DB_PORT,
-  ssl: process.env.DB_SSL === 'true' ? {rejectUnauthorized: true} : false,
-  connectionLimit: 10
-});
+// Buat koneksi baru untuk setiap request (penting untuk serverless)
+async function connectDB() {
+  try {
+    const connection = await mysql.createConnection({
+      host: process.env.DB_HOST,
+      user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      database: process.env.DB_NAME,
+      ssl: {rejectUnauthorized: true}
+    });
+    return connection;
+  } catch (error) {
+    console.error('Database connection error:', error);
+    throw error;
+  }
+}
 
-const promisePool = pool.promise();
-
-module.exports = promisePool;
+module.exports = { connectDB };
