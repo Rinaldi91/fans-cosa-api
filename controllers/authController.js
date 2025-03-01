@@ -1,4 +1,4 @@
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/userModel');
 const { SECRET_KEY } = require('../config/auth');
@@ -37,9 +37,11 @@ const AuthController = {
 
         try {
             // Hash password
-            const hashedPassword = await bcrypt.hash(password, 10);
+            // const hashedPassword = await bcrypt.hash(password, 10);
+            const hashedPassword = bcrypt.hashSync(password, 10);
 
             // Create user
+            // const user = await User.create(name, email, hashedPassword);
             const user = await User.create(name, email, hashedPassword);
 
             // Tambahkan role_id: 3 ke tabel user_roles
