@@ -34,7 +34,7 @@ const UserController = {
     // Memperbarui role yang sudah di-assign
     updateAssignRole: async (req, res) => {
         const { userId, roleId } = req.body;
-    
+
         // Validasi input
         if (!userId || !roleId) {
             return res.status(400).send({
@@ -43,7 +43,7 @@ const UserController = {
                 data: null,
             });
         }
-    
+
         try {
             // Periksa apakah roleId ada di tabel roles
             const [roleExists] = await db.query('SELECT id FROM roles WHERE id = ?', [roleId]);
@@ -54,10 +54,10 @@ const UserController = {
                     data: null,
                 });
             }
-    
+
             // Lanjutkan pembaruan jika roleId valid
             const updated = await User.updateAssignRole(userId, roleId);
-    
+
             if (!updated) {
                 return res.status(404).send({
                     status: 'error',
@@ -65,7 +65,7 @@ const UserController = {
                     data: null,
                 });
             }
-    
+
             res.status(200).send({
                 status: 'success',
                 message: 'Role updated successfully',
@@ -79,8 +79,8 @@ const UserController = {
             });
         }
     },
-    
-    
+
+
 
     // Mendapatkan daftar semua pengguna
     getAllUsers: async (req, res) => {
@@ -124,25 +124,64 @@ const UserController = {
                 });
             }
 
-            // Ambil permissions berdasarkan user ID
-            const permissions = await User.getPermissionsByUserId(id);
+            // Ambil role permissions berdasarkan user ID
+            const rolePermissions = await User.getRolePermissionsByUserId(id);
+
+            // Proses dan strukturkan data roles dan permissions
+            const processedData = {
+                user,
+                roles: [],
+                permissions: [],
+            };
+
+            // Cek apakah rolePermissions adalah array
+            if (Array.isArray(rolePermissions) && rolePermissions.length > 0) {
+                // Ekstrak roles unik
+                const uniqueRoles = rolePermissions.reduce((acc, item) => {
+                    if (item.role_id && !acc.some(role => role.id === item.role_id)) {
+                        acc.push({
+                            id: item.role_id,
+                            name: item.role_name,
+                            description: item.role_description
+                        });
+                    }
+                    return acc;
+                }, []);
+
+                // Ekstrak permissions unik
+                const uniquePermissions = rolePermissions.reduce((acc, item) => {
+                    if (item.permission_id && !acc.some(perm => perm.id === item.permission_id)) {
+                        acc.push({
+                            id: item.permission_id,
+                            name: item.permission_name,
+                            description: item.permission_description
+                        });
+                    }
+                    return acc;
+                }, []);
+
+                processedData.roles = uniqueRoles;
+                processedData.permissions = uniquePermissions;
+            }
 
             res.status(200).send({
                 status: 'success',
-                message: 'User retrieved successfully',
-                data: {
-                    user,
-                    permissions,
-                },
+                message: 'User details retrieved successfully',
+                data: processedData,
             });
         } catch (error) {
+            console.error('Error retrieving user details:', error);
             res.status(500).send({
                 status: 'error',
-                message: 'Failed to retrieve user',
-                data: { error: error.message },
+                message: 'Failed to retrieve user details',
+                data: {
+                    error: error.message,
+                    stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+                },
             });
         }
     },
+    
 };
 
 module.exports = UserController;

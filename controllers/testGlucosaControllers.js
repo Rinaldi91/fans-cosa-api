@@ -2,9 +2,10 @@ const TestGlucosaModel = require('../models/testGlucosaModel');
 const db = require('../config/db');
 
 module.exports = {
+
     createTest: async (req, res) => {
         try {
-            let { date_time, glucos_value, unit, patient_id } = req.body;
+            let { date_time, glucos_value, unit, patient_id, device_name } = req.body;
     
             // Jika patient_id kosong atau null, set ke 0
             if (!patient_id) {
@@ -60,7 +61,8 @@ module.exports = {
                 date_time,
                 glucos_value,
                 unit,
-                patient_id
+                patient_id,
+                device_name,
             });
     
             if (!testId) {
@@ -168,7 +170,7 @@ module.exports = {
         }
     },
 
-    // Dapatkan tes gula darah berdasarkan ID pasien
+    // Dapatkan tes gula darah berdasarkan ID pasien no pagination
     getPatientTestsAll: async (req, res) => {
         try {
             const { patient_id } = req.params;

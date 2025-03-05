@@ -5,6 +5,7 @@ const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const helmet = require('helmet'); // Tambahkan helmet untuk keamanan tambahan
 const rateLimit = require('express-rate-limit'); // Batasi jumlah request untuk mencegah DDoS
+const db = require('./config/db'); // Koneksi MySQL2
 
 // Import routes
 const authRoutes = require('./routes/authRoutes');
@@ -14,19 +15,16 @@ const permissionRoutes = require('./routes/permissionRoutes');
 const rolePermissionRoutes = require('./routes/rolePermissionRoutes');
 const patientRoutes = require('./routes/patientRoutes');
 const testGlucosaRoutes = require('./routes/testGlucosaRoutes');
-const db = require('./config/db');
-
-// Letakkan log ini di awal file setelah import
-console.log('Attempting database connection with:', {
-    host: process.env.DB_HOST,
-    user: process.env.DB_USER,
-    database: process.env.DB_NAME
-  });
+// const { authenticateToken } = require('./config/auth');
+const logActivity = require('./models/Log');
 
 const app = express(); // Inisialisasi aplikasi Express
 const PORT = process.env.PORT || 3000;
 
 // Middleware Keamanan
+app.use(express.json());
+// app.use(authenticateToken);
+app.use(logActivity);
 app.use(helmet()); // Mengamankan header HTTP
 
 // Rate Limiting
@@ -51,7 +49,6 @@ const allowedOrigins = [
     'https://*.ngrok-free.app' // Format baru domain ngrok
 ];
 
-// Penggunaan HTTP
 const corsOptions = {
     origin: function (origin, callback) {
         if (!origin || allowedOrigins.includes(origin)) {
@@ -66,15 +63,17 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
+
 // Test database connection
-db.getConnection((err) => {
-    if (err) {
-        console.error('Database connection failed:', err.message);
+(async () => {
+    try {
+        const [rows] = await db.query('SELECT 1'); // Pastikan tidak pakai db.promise().query
+        console.log('✅ Connection to database successful');
+    } catch (err) {
+        console.error('❌ Database connection failed:', err);
         process.exit(1);
-    } else {
-        console.log('Connected to the database');
     }
-});
+})();
 
 // Routes
 app.use('/auth', authRoutes);
@@ -85,7 +84,8 @@ app.use('/api/permission', permissionRoutes);
 app.use('/api/patients', patientRoutes);
 app.use('/api/test-glucosa', testGlucosaRoutes);
 
-app.use('/', (req, res) => {
+// Handling 404
+app.use((req, res) => {
     res.status(404).send(`
       <!DOCTYPE html>
       <html lang="en">
@@ -121,7 +121,6 @@ app.use('/', (req, res) => {
     `);
 });
 
-
 // Global Error Handling
 app.use((err, req, res, next) => {
     console.error(err.stack);
@@ -133,31 +132,5 @@ app.use((err, req, res, next) => {
 
 // Start server
 app.listen(PORT, () => {
-    console.log(`Server is running on http://localhost:${PORT}`);
+    console.log(`🚀 Server berjalan di http://localhost:${PORT}`);
 });
-
-// app.listen(5000, '0.0.0.0', () => {
-//     console.log('Server running on http://0.0.0.0:5000');
-// });
-
-
-// Penggunaan HTTPS
-// const corsOptions = {
-//     origin: function (origin, callback) {
-//         if (!origin || allowedOrigins.some(allowedOrigin => {
-//             // Handle wildcard domains
-//             if (allowedOrigin.includes('*')) {
-//                 const pattern = new RegExp('^' + allowedOrigin.replace('*', '.*'));
-//                 return pattern.test(origin);
-//             }
-//             return allowedOrigin === origin;
-//         })) {
-//             callback(null, true);
-//         } else {
-//             callback(new Error('Not allowed by CORS'));
-//         }
-//     },
-//     methods: ['GET', 'POST', 'PUT', 'DELETE'],
-//     allowedHeaders: ['Content-Type', 'Authorization'],
-//     credentials: true,
-// };

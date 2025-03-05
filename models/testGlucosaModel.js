@@ -13,17 +13,17 @@ class TestGlucosaModel {
     static async create(data) {
         // Pastikan patient_id tidak null, jika null set ke 0
         const patientId = data.patient_id ? data.patient_id : 0;
-    
+
         const [result] = await db.query(
-            'INSERT INTO glucosa_tests (date_time, glucos_value, unit, patient_id) VALUES (?, ?, ?, ?)',
-            [data.date_time, data.glucos_value, data.unit, patientId] // Gunakan 0 jika tidak ada patient_id
+            'INSERT INTO glucosa_tests (date_time, glucos_value, unit, patient_id, device_name) VALUES (?, ?, ?, ?, ?)',
+            [data.date_time, data.glucos_value, data.unit, patientId, data.device_name] // Gunakan 0 jika tidak ada patient_id
         );
-    
+
         return result.insertId;
     }
-    
-    
-    
+
+
+
 
     // Mendapatkan semua list test glucose untuk semua pasien dengan pagination
     static async getAllTests(limit = 10, offset = 0, filters = {}) {
@@ -130,20 +130,20 @@ class TestGlucosaModel {
     static async getByPatientIdAll(patientId) {
         // Cek apakah patient ada
         const [patientCheck] = await db.query('SELECT id FROM patients WHERE id = ?', [patientId]);
-    
+
         if (patientCheck.length === 0) {
             throw new Error('Patient not found');
         }
-    
+
         // Ambil semua data tes gula darah untuk pasien ini
         const [rows] = await db.query(
             'SELECT * FROM glucosa_tests WHERE patient_id = ? ORDER BY date_time DESC',
             [patientId]
         );
-    
+
         return rows; // Kembalikan data tes gula darah
     }
-    
+
 
     // Dapatkan single tes gula darah berdasarkan ID
     static async getById(id) {
@@ -182,7 +182,7 @@ class TestGlucosaModel {
         return stats[0];
     }
 
-   static async getLatestTest(patientId) {
+    static async getLatestTest(patientId) {
         const [rows] = await db.query(`
             SELECT *
             FROM glucosa_tests 
@@ -193,7 +193,7 @@ class TestGlucosaModel {
         return rows[0];
     }
 
-    static async getAllWithPagination (limit, offset) {
+    static async getAllWithPagination(limit, offset) {
         const [rows] = await db.query(`SELECT * FROM glucosa_tests LIMIT ? OFFSET ?`, [limit, offset]);
         return rows;
     }
@@ -207,20 +207,20 @@ class TestGlucosaModel {
         try {
             // Hapus semua data di tabel glucosa_tests_sync
             await db.query('DELETE FROM glucosa_tests_sync');
-    
+
             // Salin semua data dari tabel glucosa_tests ke tabel glucosa_tests_sync, kecuali kolom patient_id
             await db.query(`
                 INSERT INTO glucosa_tests_sync (id, date_time, glucos_value, unit)
                 SELECT id, date_time, glucos_value, unit FROM glucosa_tests
             `);
-    
+
             return { status: 'success', message: 'Glucose tests synchronized successfully' };
         } catch (error) {
             throw new Error('Failed to synchronize glucose tests: ' + error.message);
         }
     }
 
-    
+
 }
 
 module.exports = TestGlucosaModel;

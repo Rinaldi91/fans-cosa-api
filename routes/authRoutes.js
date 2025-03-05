@@ -8,10 +8,15 @@ router.post('/register', AuthController.register);
 // Login user
 router.post('/login', AuthController.login);
 
-//verify token
+// Verify token
 router.get('/verify-token', AuthController.verifyToken);
 
-// Route logout
+// Logout user
 router.post('/logout', AuthController.logout);
+
+// Debugging endpoint untuk mengambil token (Hanya tersedia di mode development)
+if (process.env.NODE_ENV === 'development') {
+    router.get('/debug/token', AuthController.debugToken);
+}
 
 module.exports = router;

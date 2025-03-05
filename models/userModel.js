@@ -23,7 +23,7 @@ const User = {
 
     // Mendapatkan semua pengguna
     getAll: async () => {
-        const [rows] = await db.query('SELECT id, email FROM users');
+        const [rows] = await db.query('SELECT * FROM users');
         return rows;
     },
 
@@ -35,6 +35,25 @@ const User = {
     getPermissionsByUserId: async (userId) => {
         const query = `
             SELECT p.id AS permission_id, p.name AS permission_name, p.description AS permission_description
+            FROM permissions p
+            INNER JOIN role_permissions rp ON rp.permission_id = p.id
+            INNER JOIN roles r ON r.id = rp.role_id
+            INNER JOIN user_roles ur ON ur.role_id = r.id
+            WHERE ur.user_id = ?
+        `;
+        const [rows] = await db.query(query, [userId]);
+        return rows;
+    },
+
+    getRolePermissionsByUserId: async (userId) => {
+        const query = `
+            SELECT 
+                r.id AS role_id, 
+                r.name AS role_name, 
+                r.description AS role_description,
+                p.id AS permission_id, 
+                p.name AS permission_name, 
+                p.description AS permission_description
             FROM permissions p
             INNER JOIN role_permissions rp ON rp.permission_id = p.id
             INNER JOIN roles r ON r.id = rp.role_id
