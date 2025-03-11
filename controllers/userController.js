@@ -80,8 +80,6 @@ const UserController = {
         }
     },
 
-
-
     // Mendapatkan daftar semua pengguna
     getAllUsers: async (req, res) => {
         try {

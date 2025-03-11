@@ -2,10 +2,9 @@ const TestGlucosaModel = require('../models/testGlucosaModel');
 const db = require('../config/db');
 
 module.exports = {
-
     createTest: async (req, res) => {
         try {
-            let { date_time, glucos_value, unit, patient_id, device_name } = req.body;
+            let { date_time, glucos_value, unit, patient_id, device_name, metode, is_validation } = req.body;
     
             // Jika patient_id kosong atau null, set ke 0
             if (!patient_id) {
@@ -46,14 +45,6 @@ module.exports = {
                 if (patientCheck.length === 0) {
                     patient_id = 0;
                 }
-
-                // if (patientCheck.length === 0) {
-                //     return res.status(404).send({
-                //         status: 'error',
-                //         message: 'Patient not found',
-                //         data: null
-                //     });
-                // }
             }
     
             // Tambahkan test ke database
@@ -63,6 +54,8 @@ module.exports = {
                 unit,
                 patient_id,
                 device_name,
+                metode : "Elektrokimia",
+                is_validation: 0
             });
     
             if (!testId) {
@@ -200,7 +193,6 @@ module.exports = {
         }
     },  
 
-
     // Update tes gula darah
     updateTest: async (req, res) => {
         try {
@@ -280,7 +272,8 @@ module.exports = {
                 data: null
             });
         }
-    }    
+    }  
+      
 };
 
 // Tambah tes gula darah baru
@@ -357,3 +350,11 @@ module.exports = {
     //         });
     //     }
     // },
+
+    // if (patientCheck.length === 0) {
+    //     return res.status(404).send({
+    //         status: 'error',
+    //         message: 'Patient not found',
+    //         data: null
+    //     });
+    // }

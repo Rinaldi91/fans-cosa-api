@@ -1,10 +1,11 @@
 const db = require('../config/db');
 
 const Permission = {
-    // Mendapatkan semua permissions
-    getAll: async () => {
-        const [rows] = await db.query('SELECT * FROM permissions');
-        return rows;
+
+    // Menambahkan permission baru
+    create: async (name, description) => {
+        const [result] = await db.query('INSERT INTO permissions (name, description) VALUES (?, ?)', [name, description]);
+        return { id: result.insertId, name, description };
     },
 
     // Mendapatkan permission berdasarkan ID
@@ -13,12 +14,11 @@ const Permission = {
         return rows[0];
     },
 
-    // Menambahkan permission baru
-    create: async (name, description) => {
-        const [result] = await db.query('INSERT INTO permissions (name, description) VALUES (?, ?)', [name, description]);
-        return { id: result.insertId, name, description };
+    // Mendapatkan semua permissions
+    getAll: async () => {
+        const [rows] = await db.query('SELECT * FROM permissions');
+        return rows;
     },
-
 
     // Memperbarui permission berdasarkan ID
     update: async (id, name, description) => {

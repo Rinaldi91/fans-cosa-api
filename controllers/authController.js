@@ -51,24 +51,24 @@ const AuthController = {
         body('name').trim().isLength({ min: 3 }).withMessage('Name must be at least 3 characters long'),
         body('email').isEmail().withMessage('Invalid email format'),
         body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters long'),
-
+        body('role_id').isInt({ min: 1 }).withMessage('Role ID must be a valid integer'),
+    
         async (req, res) => {
             try {
                 // Validasi input
                 validateInput(req, res);
-
-                const { name, email, password } = req.body;
-
+    
+                const { name, email, password, role_id } = req.body;
+    
                 // Hash password
                 const hashedPassword = hashPassword(password);
-
+    
                 // Create user
                 const user = await User.create(name, email, hashedPassword);
-
-                // Tambahkan role_id: 3 ke tabel user_roles
-                const roleId = 3; // role_id untuk user default
-                await db.query('INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)', [user.id, roleId]);
-
+    
+                // Tambahkan role_id yang diinputkan dari request
+                await db.query('INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)', [user.id, role_id]);
+    
                 res.status(201).send({
                     status: 'success',
                     message: 'User registered successfully',
@@ -76,7 +76,7 @@ const AuthController = {
                         id: user.id,
                         name: user.name,
                         email: user.email,
-                        role_id: roleId,
+                        role_id: role_id,
                     },
                 });
             } catch (error) {

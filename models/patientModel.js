@@ -87,6 +87,17 @@ const Patient = {
         return rows;
     },
 
+    getAllNoPagination: async () => {
+        try {
+            // Pastikan koneksi database berjalan dengan baik
+            const [rows] = await db.query(`SELECT * FROM patients WHERE id != 0`);
+            return rows;
+        } catch (error) {
+            console.error('Database Query Error:', error);
+            throw new Error('Failed to fetch patients');
+        }
+    },
+
     // Mendapatkan total jumlah pasien, tanpa menghitung pasien dengan id = 0
     getTotalCount: async () => {
         const [rows] = await db.query(`SELECT COUNT(*) AS count FROM patients WHERE id != 0`);

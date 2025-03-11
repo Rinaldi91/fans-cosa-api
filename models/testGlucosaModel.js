@@ -1,91 +1,90 @@
 const db = require('../config/db');
 
 class TestGlucosaModel {
-    // Tambahkan tes gula darah baru
-    // static async create(data) {
-    //     const [result] = await db.query(
-    //         'INSERT INTO glucosa_tests (date_time, glucos_value, unit, patient_id) VALUES (?, ?, ?, ?)',
-    //         [data.date_time, data.glucos_value, data.unit, data.patient_id]
-    //     );
-    //     return result.insertId;
-    // }
-
     static async create(data) {
         // Pastikan patient_id tidak null, jika null set ke 0
         const patientId = data.patient_id ? data.patient_id : 0;
 
         const [result] = await db.query(
-            'INSERT INTO glucosa_tests (date_time, glucos_value, unit, patient_id, device_name) VALUES (?, ?, ?, ?, ?)',
-            [data.date_time, data.glucos_value, data.unit, patientId, data.device_name] // Gunakan 0 jika tidak ada patient_id
+            'INSERT INTO glucosa_tests (date_time, glucos_value, unit, patient_id, device_name, metode, is_validation) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [data.date_time, data.glucos_value, data.unit, patientId, data.device_name, data.metode, data.is_validation] // Gunakan 0 jika tidak ada patient_id
         );
 
         return result.insertId;
     }
 
-
-
-
     // Mendapatkan semua list test glucose untuk semua pasien dengan pagination
     static async getAllTests(limit = 10, offset = 0, filters = {}) {
-        // Bangun query dinamis dengan filter opsional
-        let query = 'SELECT gt.*, p.name AS patient_name FROM glucosa_tests gt ';
-        query += 'JOIN patients p ON gt.patient_id = p.id ';
+        try {
+            // Bangun query utama
+            let query = `
+                SELECT gt.*, p.name AS patient_name 
+                FROM glucosa_tests gt
+                JOIN patients p ON gt.patient_id = p.id
+            `;
 
-        const queryParams = [];
-        const whereConditions = [];
+            const queryParams = [];
+            const whereConditions = [];
 
-        // Filter berdasarkan unit
-        if (filters.unit) {
-            whereConditions.push('gt.unit = ?');
-            queryParams.push(filters.unit);
-        }
-
-        // Filter berdasaran rentang tanggal
-        if (filters.start_date && filters.end_date) {
-            whereConditions.push('gt.date_time BETWEEN ? AND ?');
-            queryParams.push(filters.start_date, filters.end_date);
-        }
-
-        // Filter berdasarkan patient_id
-        if (filters.patient_id) {
-            whereConditions.push('gt.patient_id = ?');
-            queryParams.push(filters.patient_id);
-        }
-
-        // Tambahkan WHERE clause jika ada kondisi
-        if (whereConditions.length > 0) {
-            query += 'WHERE ' + whereConditions.join(' AND ') + ' ';
-        }
-
-        // Tambahkan order dan pagination
-        query += 'ORDER BY gt.date_time DESC LIMIT ? OFFSET ?';
-        queryParams.push(limit, offset);
-
-        // Eksekusi query untuk data
-        const [rows] = await db.query(query, queryParams);
-
-        // Hitung total data untuk pagination
-        let countQuery = 'SELECT COUNT(*) as total FROM glucosa_tests gt ';
-
-        // Tambahkan WHERE clause untuk total count jika ada
-        if (whereConditions.length > 0) {
-            countQuery += 'WHERE ' + whereConditions.join(' AND ');
-        }
-
-        const [countResult] = await db.query(countQuery, queryParams.slice(0, -2));
-        const totalCount = countResult[0].total;
-
-        return {
-            data: rows,
-            pagination: {
-                total_records: totalCount,
-                total_pages: Math.ceil(totalCount / limit),
-                current_page: Math.floor(offset / limit) + 1,
-                per_page: limit
+            // Filter berdasarkan unit
+            if (filters.unit) {
+                whereConditions.push('gt.unit = ?');
+                queryParams.push(filters.unit);
             }
-        };
-    }
 
+            // Filter berdasarkan rentang tanggal
+            if (filters.start_date && filters.end_date) {
+                whereConditions.push('gt.date_time BETWEEN ? AND ?');
+                queryParams.push(filters.start_date, filters.end_date);
+            }
+
+            // Filter berdasarkan patient_id
+            if (filters.patient_id) {
+                whereConditions.push('gt.patient_id = ?');
+                queryParams.push(filters.patient_id);
+            }
+
+            // Tambahkan WHERE clause jika ada kondisi
+            if (whereConditions.length > 0) {
+                query += ' WHERE ' + whereConditions.join(' AND ');
+            }
+
+            // Urutkan dari terbaru ke lama dan tambahkan pagination
+            query += ' ORDER BY gt.date_time DESC LIMIT ? OFFSET ?';
+            queryParams.push(limit, offset);
+
+            console.log("Executing Query:", query, queryParams); // Debugging query
+            const [rows] = await db.query(query, queryParams);
+
+            // Query untuk count total data (gunakan filter yang sama)
+            let countQuery = `
+                SELECT COUNT(*) as total 
+                FROM glucosa_tests gt
+                JOIN patients p ON gt.patient_id = p.id
+            `;
+
+            if (whereConditions.length > 0) {
+                countQuery += ' WHERE ' + whereConditions.join(' AND ');
+            }
+
+            console.log("Executing Count Query:", countQuery, queryParams); // Debugging query count
+            const [countResult] = await db.query(countQuery, queryParams);
+            const totalCount = countResult[0].total;
+
+            return {
+                data: rows,
+                pagination: {
+                    total_records: totalCount,
+                    total_pages: Math.ceil(totalCount / limit),
+                    current_page: Math.floor(offset / limit) + 1,
+                    per_page: limit
+                }
+            };
+        } catch (error) {
+            console.error("Error fetching glucose tests:", error);
+            throw new Error("Failed to fetch glucose test data.");
+        }
+    }
 
     // Dapatkan semua tes gula darah berdasarkan ID pasien
     static async getByPatientId(patientId, limit = 10, offset = 0) {
@@ -126,7 +125,6 @@ class TestGlucosaModel {
         };
     }
 
-
     static async getByPatientIdAll(patientId) {
         // Cek apakah patient ada
         const [patientCheck] = await db.query('SELECT id FROM patients WHERE id = ?', [patientId]);
@@ -143,7 +141,6 @@ class TestGlucosaModel {
 
         return rows; // Kembalikan data tes gula darah
     }
-
 
     // Dapatkan single tes gula darah berdasarkan ID
     static async getById(id) {
@@ -218,6 +215,16 @@ class TestGlucosaModel {
         } catch (error) {
             throw new Error('Failed to synchronize glucose tests: ' + error.message);
         }
+    }
+
+    
+    static async IsValidationTest(id) {
+        const [result] = await db.query(
+            'UPDATE glucosa_tests SET is_validation = 1 WHERE id = ?',
+            [id]
+        );
+        
+        return result.affectedRows > 0;
     }
 
 

@@ -1,11 +1,11 @@
-require('dotenv').config(); // Load environment variables
+require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
-const helmet = require('helmet'); // Tambahkan helmet untuk keamanan tambahan
-const rateLimit = require('express-rate-limit'); // Batasi jumlah request untuk mencegah DDoS
-const db = require('./config/db'); // Koneksi MySQL2
+const helmet = require('helmet');
+// const rateLimit = require('express-rate-limit');
+const db = require('./config/db');
 
 // Import routes
 const authRoutes = require('./routes/authRoutes');
@@ -15,38 +15,21 @@ const permissionRoutes = require('./routes/permissionRoutes');
 const rolePermissionRoutes = require('./routes/rolePermissionRoutes');
 const patientRoutes = require('./routes/patientRoutes');
 const testGlucosaRoutes = require('./routes/testGlucosaRoutes');
-// const { authenticateToken } = require('./config/auth');
+
+// Import routes Bridgings
+const testGlucosaBridgingRoutes = require('./routes/testGlucosaBridgingRoutes');
+
 const logActivity = require('./models/Log');
-
-const app = express(); // Inisialisasi aplikasi Express
+const app = express();
 const PORT = process.env.PORT || 3000;
-
-// Middleware Keamanan
-app.use(express.json());
-// app.use(authenticateToken);
-app.use(logActivity);
-app.use(helmet()); // Mengamankan header HTTP
-
-// Rate Limiting
-const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 menit
-    max: 100, // Batasi 100 request per IP
-    message: 'Too many requests from this IP, please try again later.'
-});
-app.use(limiter);
-
-// Middleware Parsing dan Cookie
-app.use(cookieParser());
-app.use(bodyParser.json());
-app.use(express.urlencoded({ extended: true }));
 
 // Middleware CORS
 const allowedOrigins = [
-    process.env.FRONTEND_URL, 
-    'http://192.168.18.29:5000',
-    'http://localhost:5000', 
-    'https://*.ngrok.io', // Menambahkan domain ngrok
-    'https://*.ngrok-free.app' // Format baru domain ngrok
+    process.env.FRONTEND_URL,
+    'http://192.168.18.29:3000',
+    'http://localhost:3000',
+    'https://*.ngrok.io',
+    'https://*.ngrok-free.app'
 ];
 
 const corsOptions = {
@@ -57,17 +40,35 @@ const corsOptions = {
             callback(new Error('Not allowed by CORS'));
         }
     },
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Tambahkan OPTIONS
     allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: true, // Izinkan cookie
+    credentials: true,
+    optionsSuccessStatus: 200
 };
 
 app.use(cors(corsOptions));
+app.options('*', cors(corsOptions)); // Tangani preflight request OPTIONS
+
+// Middleware Keamanan
+app.use(express.json());
+app.use(cookieParser());
+app.use(bodyParser.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(helmet());
+app.use(logActivity);
+
+// Rate Limiting
+// const limiter = rateLimit({
+//     windowMs: 15 * 60 * 1000,
+//     max: 100,
+//     message: 'Too many requests from this IP, please try again later.'
+// });
+// app.use(limiter);
 
 // Test database connection
 (async () => {
     try {
-        const [rows] = await db.query('SELECT 1'); // Pastikan tidak pakai db.promise().query
+        const [rows] = await db.query('SELECT 1');
         console.log('✅ Connection to database successful');
     } catch (err) {
         console.error('❌ Database connection failed:', err);
@@ -79,10 +80,13 @@ app.use(cors(corsOptions));
 app.use('/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/roles', roleRoutes);
-app.use('/api/roles-permission', rolePermissionRoutes);
+app.use('/api/role-permissions', rolePermissionRoutes);
 app.use('/api/permission', permissionRoutes);
 app.use('/api/patients', patientRoutes);
 app.use('/api/test-glucosa', testGlucosaRoutes);
+
+//Routes Bridgings
+app.use('/app/test-glucosa', testGlucosaBridgingRoutes);
 
 // Handling 404
 app.use((req, res) => {

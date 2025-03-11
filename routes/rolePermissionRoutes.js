@@ -10,13 +10,13 @@ router.use(authenticateToken);
 
 
 // Menambahkan permission ke role
-router.post('/assign-permission', authorize('assign_permission'), RolePermissionController.assignPermissionsToRole);
+router.post('/', authorize('create_role_permission'), RolePermissionController.assignPermissionsToRole);
 
 // Menghapus permission dari role
-router.delete('/remove-permission', authorize('assign_permission'), RolePermissionController.removePermissionFromRole);
+router.delete('/detele-role-permission', authorize('delete_role_permission'), RolePermissionController.removePermissionFromRole);
 
 // Route untuk memperbarui permission untuk role berdasarkan roleId
-router.put('/update-permission', authorize('assign_permission'), RolePermissionController.updateAssignPermissionsToRole);
+router.put('/update-role-permission', authorize('update_role_permission'), RolePermissionController.updateAssignPermissionsToRole);
 
 
 module.exports = router;
