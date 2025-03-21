@@ -3,7 +3,6 @@ const db = require('../config/db');
 const Patient = {
     // Membuat data pasien baru
     create: async (data) => {
-        // Destructure without status
         const {
             nik,
             name,
@@ -14,41 +13,42 @@ const Patient = {
             email
         } = data;
 
-        // Validasi NIK (16 digit)
-        if (!nik || nik.length !== 16) {
-            throw new Error('NIK must be exactly 16 characters long');
-        }
-
-        // Validasi nomor telepon (11-12 digit)
-        if (!number_phone || number_phone.length < 11 || number_phone.length > 12) {
-            throw new Error('Phone number must be between 11 and 12 characters long');
-        }
-
-        // Validasi karakter NIK (hanya angka)
-        if (!/^\d+$/.test(nik)) {
-            throw new Error('NIK must contain only numeric characters');
-        }
-
-        // Validasi karakter nomor telepon (hanya angka)
-        if (!/^\d+$/.test(number_phone)) {
-            throw new Error('Phone number must contain only numeric characters');
-        }
-
-        // Validasi input wajib
+        const errors = {};
         const requiredFields = [
-            'nik', 'name', 'place_of_birth', 'date_of_birth',
-            'address', 'number_phone', 'email'
+            "nik", "name", "place_of_birth", "date_of_birth",
+            "address", "number_phone", "email"
         ];
-        for (const field of requiredFields) {
+
+        requiredFields.forEach(field => {
             if (!data[field]) {
-                throw new Error(`${field.replace('_', ' ')} is required`);
+                errors[field] = `${field.replace('_', ' ')} is required`;
+            }
+        });
+
+        // Validasi NIK (16 digit dan hanya angka)
+        if (nik && (nik.length !== 16 || !/^\d+$/.test(nik))) {
+            errors.nik = "NIK must be exactly 16 digits and contain only numbers";
+        }
+
+        // Validasi nomor telepon
+        if (number_phone) {
+            if (!/^\d+$/.test(number_phone)) {
+                errors.number_phone = "Phone number must contain only numbers";
+            } else if (number_phone.length < 11 || number_phone.length > 13) {
+                errors.number_phone = "Phone number must be between 11 and 13 digits";
+            } else if (!number_phone.startsWith("08")) {
+                errors.number_phone = "Invalid Phone Number, must start with '08'";
             }
         }
 
         // Validasi email format
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-            throw new Error('Invalid email format');
+        if (email && !emailRegex.test(email)) {
+            errors.email = "Invalid email format";
+        }
+
+        if (Object.keys(errors).length > 0) {
+            throw new Error(JSON.stringify(errors));
         }
 
         // Set status default ke 'active'
@@ -72,18 +72,40 @@ const Patient = {
         return { id, patient_code, barcode, nik, name, place_of_birth, date_of_birth, address, number_phone, email, status };
     },
 
-
     // Mendapatkan semua data pasien// Mendapatkan data pasien dengan pagination
     // Mendapatkan data pasien dengan pagination dan filter pencarian
     getAllWithPagination: async (limit, offset, search = '') => {
         // Menggunakan parameter search dalam query dan memastikan pasien dengan id = 0 tidak ditampilkan
         const query = `
-        SELECT * FROM patients
-        WHERE (name LIKE ? OR patient_code LIKE ? OR barcode LIKE ? OR nik LIKE ?)
-        AND id != 0
-        LIMIT ? OFFSET ?
-    `;
-        const [rows] = await db.query(query, [`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`, limit, offset]);
+            SELECT * 
+            FROM patients
+            WHERE (name LIKE ? OR patient_code LIKE ? OR barcode LIKE ? OR nik LIKE ?)
+            AND id != 0
+            AND created_at IS NOT NULL
+            ORDER BY created_at DESC
+            LIMIT ? OFFSET ?
+        `;
+        const [rows] = await db.query(query, [
+            `%${search}%`,
+            `%${search}%`,
+            `%${search}%`,
+            `%${search}%`,
+            limit,
+            offset
+        ]);
+        return rows;
+    },
+
+    totalPatientsPerMonth: async () => {
+        const [rows] = await db.query(`
+            SELECT 
+                MONTH(created_at) AS month, 
+                COUNT(*) AS total_patients 
+            FROM patients
+            WHERE id != 0 AND created_at IS NOT NULL
+            GROUP BY MONTH(created_at)
+            ORDER BY MONTH(created_at) ASC
+        `);
         return rows;
     },
 
@@ -213,7 +235,10 @@ const Patient = {
     delete: async (id) => {
         const [result] = await db.query(`DELETE FROM patients WHERE id = ?`, [id]);
         return result.affectedRows > 0;
-    }
+    },
+
+    //menampilkan data pasient yang terdaftar berdasarkan bulan
+    
 };
 
 module.exports = Patient;

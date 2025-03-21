@@ -41,7 +41,7 @@ class TestGlucosaBridgingModel {
             queryParams.push(limit, offset);
 
             console.log("Executing Query:", query, queryParams); // Debugging query
-            const [rows] = await db.query(query, queryParams);
+            const [rows] = await dbBridging.query(query, queryParams);
 
             // Query untuk count total data (gunakan filter yang sama)
             let countQuery = `
@@ -74,13 +74,46 @@ class TestGlucosaBridgingModel {
     }
 
     static async getAllWithPagination(limit, offset) {
-        const [rows] = await dbBridging.query(`SELECT * FROM glucosa_test LIMIT ? OFFSET ?`, [limit, offset]);
-        return rows;
-    }
+            const query = `
+                SELECT * 
+                FROM glucosa_test
+                ORDER BY created_at DESC
+                LIMIT ? OFFSET ?
+            `;
+            const [rows] = await dbBridging.query(query, [limit, offset]);
+            return rows;
+        }
 
     static async getTotalCount() {
         const [rows] = await dbBridging.query('SELECT COUNT(*) as total FROM glucosa_test');
         return rows[0].total;
+    }
+
+    static async insertGlucosaTest (data) {
+        try {
+            const query = `
+                INSERT INTO cosa_app_bridging_db.glucosa_test 
+                (id, date_time, glucos_value, unit, patient_id, device_name, metode, is_validation) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            `;
+
+            const values = [
+                data.id,
+                data.date_time,
+                data.glucos_value,
+                data.unit,
+                data.patient_id,
+                data.device_name,
+                data.metode,
+                data.is_validation
+            ];
+
+            const [result] = await dbBridging.execute(query, values);
+            return result.affectedRows > 0;
+        } catch (error) {
+            console.error('Error inserting data into bridging database:', error);
+            return false;
+        }
     }
 
 }

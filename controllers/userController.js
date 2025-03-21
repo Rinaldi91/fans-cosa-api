@@ -82,12 +82,37 @@ const UserController = {
 
     // Mendapatkan daftar semua pengguna
     getAllUsers: async (req, res) => {
+        const { page = 1, limit = 10, search = '' } = req.query;
+    
+        // Pastikan parameter `page` dan `limit` adalah angka
+        const pageNumber = parseInt(page, 10) || 1;
+        const limitNumber = parseInt(limit, 10) || 10;
+    
+        // Hitung offset
+        const offset = (pageNumber - 1) * limitNumber;
+    
         try {
-            const users = await User.getAll();
+            // Dapatkan data pengguna dengan limit, offset, dan search
+            const users = await User.getAllWithPagination(limitNumber, offset, search);
+    
+            // Hitung total data pengguna yang cocok dengan search
+            const totalUsers = await User.getTotalCount(search);
+    
+            // Hitung total halaman
+            const totalPages = Math.ceil(totalUsers / limitNumber);
+    
             res.status(200).send({
                 status: 'success',
                 message: 'Users retrieved successfully',
-                data: users,
+                data: {
+                    users,
+                    pagination: {
+                        currentPage: pageNumber,
+                        totalPages,
+                        totalUsers,
+                        perPage: limitNumber,
+                    },
+                },
             });
         } catch (error) {
             res.status(500).send({
@@ -96,7 +121,23 @@ const UserController = {
                 data: { error: error.message },
             });
         }
-    },
+    },    
+    // getAllUsers: async (req, res) => {
+    //     try {
+    //         const users = await User.getAll();
+    //         res.status(200).send({
+    //             status: 'success',
+    //             message: 'Users retrieved successfully',
+    //             data: users,
+    //         });
+    //     } catch (error) {
+    //         res.status(500).send({
+    //             status: 'error',
+    //             message: 'Failed to retrieve users',
+    //             data: { error: error.message },
+    //         });
+    //     }
+    // },
 
     // Mendapatkan detail user berdasarkan ID
     getUserById: async (req, res) => {
@@ -179,7 +220,7 @@ const UserController = {
             });
         }
     },
-    
+
 };
 
 module.exports = UserController;

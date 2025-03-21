@@ -323,6 +323,44 @@ const PatientsController = {
                 data: { error: error.message }
             });
         }
+    },
+
+
+    //get counts all patient
+    getCounts: async (req, res) => {
+        const totalPatients = await Patient.getTotalCount();
+        res.status(200).send({
+            status: 'success',
+            message: 'Total patients retrieved successfully',
+            data: totalPatients
+        });
+    },
+
+    //buatkan menampilkan total pasien yang terdaftar setiap bulan
+    getTotalPatientsPerMonth: async (req, res) => {
+        try {
+            console.log("Calling getTotalPatientsPerMonth function...");
+            const patientData = await Patient.totalPatientsPerMonth();
+            console.log("Query result:", patientData);
+    
+            const formattedData = patientData.map(item => ({
+                month: item.month,
+                totalPatients: parseInt(item.total_patients)
+            }));
+    
+            res.status(200).send({
+                status: 'success',
+                message: 'Total patients per month retrieved successfully',
+                data: formattedData
+            });
+        } catch (error) {
+            console.error("Error in getTotalPatientsPerMonth:", error);
+            res.status(500).send({
+                status: 'error',
+                message: 'Failed to retrieve total patients per month',
+                data: { error: error.message }
+            });
+        }
     }
 };
 

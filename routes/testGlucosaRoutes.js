@@ -21,11 +21,20 @@ router.get('/patient/:patient_id/glucose-tests', authorize('view_test_glucosa'),
 
 // Update tes gula darah
 router.put('/:id', authorize('update_test_glucosa'), testGlucosaController.updateTest);
+router.put('/:id/validation', authorize('update_is_validation'), testGlucosaController.updateValidation);
+router.put('/:id/status', authorize('update_is_status'), testGlucosaController.updateIsStatus);
 
 // Hapus tes gula darah
 router.delete('/:id', authorize('delete_test_glucosa'), testGlucosaController.deleteTest);
 
 //Syncronize glucose tests
 router.post('/sync-glucosa-tests', authorize('update_test_glucosa'), testGlucosaController.syncGlucosaTests);
+
+//Dashboard
+router.get('/counts_is_validation_done', authorize('view_test_glucosa'), testGlucosaController.totalResultIsValidationDone);
+router.get('/counts_is_validation_not_done', authorize('view_test_glucosa'), testGlucosaController.totalResultIsValidationNotDone);
+router.get('/counts_total_results', authorize('view_test_glucosa'), testGlucosaController.totalResult);
+router.get('/counts_total_results_month', authorize('view_test_glucosa'), testGlucosaController.totalTestResultsPerMonth);
+router.get('/counts_total_new_results', authorize('view_test_glucosa'), testGlucosaController.totalTestResults);
 
 module.exports = router;

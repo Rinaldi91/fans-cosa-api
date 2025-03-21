@@ -15,6 +15,7 @@ const permissionRoutes = require('./routes/permissionRoutes');
 const rolePermissionRoutes = require('./routes/rolePermissionRoutes');
 const patientRoutes = require('./routes/patientRoutes');
 const testGlucosaRoutes = require('./routes/testGlucosaRoutes');
+const connectionStatusRoutes = require('./routes/connectionStatusRoutes');
 
 // Import routes Bridgings
 const testGlucosaBridgingRoutes = require('./routes/testGlucosaBridgingRoutes');
@@ -37,15 +38,14 @@ const corsOptions = {
         if (!origin || allowedOrigins.includes(origin)) {
             callback(null, true);
         } else {
-            callback(new Error('Not allowed by CORS'));
+            callback(new Error(`Not allowed by CORS: ${origin}`));
         }
     },
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Tambahkan OPTIONS
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
     optionsSuccessStatus: 200
 };
-
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions)); // Tangani preflight request OPTIONS
 
@@ -84,6 +84,7 @@ app.use('/api/role-permissions', rolePermissionRoutes);
 app.use('/api/permission', permissionRoutes);
 app.use('/api/patients', patientRoutes);
 app.use('/api/test-glucosa', testGlucosaRoutes);
+app.use('/api/connection-status', connectionStatusRoutes);
 
 //Routes Bridgings
 app.use('/app/test-glucosa', testGlucosaBridgingRoutes);
