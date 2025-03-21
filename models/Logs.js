@@ -5,7 +5,7 @@ const db = require('../config/db');
 require('dotenv').config();
 
 const logActivity = async (req, res, next) => {
-    const logPath = path.join(__dirname, 'logs', 'activity.log');
+    const logPath = path.join(__dirname, 'Logs', 'activity.log');
 
     res.on('finish', async () => {
         let userId = null;
@@ -81,8 +81,8 @@ const logActivity = async (req, res, next) => {
 
         const logEntry = `${new Date().toISOString()} | ${req.method} ${req.originalUrl} | User ID: ${userId || 'NULL'} | Name: ${userName || 'NULL'} | IP: ${req.ip} | Status: ${res.statusCode} | User-Agent: ${req.headers['user-agent']} | Data: ${requestData}\n`;
 
-        if (!fs.existsSync(path.join(__dirname, 'logs'))) {
-            fs.mkdirSync(path.join(__dirname, 'logs'));
+        if (!fs.existsSync(path.join(__dirname, 'Logs'))) {
+            fs.mkdirSync(path.join(__dirname, 'Logs'));
         }
 
         fs.appendFile(logPath, logEntry, (err) => {

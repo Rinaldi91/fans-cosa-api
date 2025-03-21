@@ -20,7 +20,7 @@ const connectionStatusRoutes = require('./routes/connectionStatusRoutes');
 // Import routes Bridgings
 const testGlucosaBridgingRoutes = require('./routes/testGlucosaBridgingRoutes');
 
-const logActivity = require('./models/Log');
+const logActivity = require('./models/Logs');
 const app = express();
 const PORT = process.env.PORT || 3000;
 

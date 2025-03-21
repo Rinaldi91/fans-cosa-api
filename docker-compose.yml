@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  mysql-db:
+    image: mysql:latest
+    container_name: mysql-db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: "4rb1berjaya"
+      MYSQL_DATABASE: "cosa_app_db"
+      MYSQL_PASSWORD: "4rb1berjaya"
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  cosa-api:
+    build: .
+    container_name: cosa-api
+    restart: always
+    depends_on:
+      - mysql-db
+    ports:
+      - "5000:5000"
+    env_file:
+      - .env.prod
+
+volumes:
+  mysql_data:
