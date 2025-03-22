@@ -1,0 +1,2 @@
+2025-03-22T01:56:40.398Z | POST /auth/login | User ID: 1 | Name: Developer | IP: ::ffff:192.168.18.29 | Status: 200 | User-Agent: PostmanRuntime/7.43.2 | Data: {"email":"developer@gmail.com","password":"Password"}
+2025-03-22T01:56:51.656Z | GET /api/patients?page=1&limit=10 | User ID: 1 | Name: Developer | IP: ::ffff:192.168.18.29 | Status: 200 | User-Agent: PostmanRuntime/7.43.2 | Data: {"page":"1","limit":"10"}
