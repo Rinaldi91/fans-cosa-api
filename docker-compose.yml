@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   mysql-db:
-    image: mysql:new
+    image: mysql:latest
     container_name: fans-cosa-mysql-db
     restart: always
     environment:
