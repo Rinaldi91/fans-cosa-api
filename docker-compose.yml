@@ -2,8 +2,8 @@ version: '3.8'
 
 services:
   mysql-db:
-    image: mysql:latest
-    container_name: mysql-db
+    image: mysql:new
+    container_name: fans-cosa-mysql-db
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: "4rb1berjaya"
@@ -16,7 +16,7 @@ services:
 
   cosa-api:
     build: .
-    container_name: cosa-api
+    container_name: fans-cosa-api
     restart: always
     depends_on:
       - mysql-db
