@@ -16,6 +16,7 @@ const rolePermissionRoutes = require('./routes/rolePermissionRoutes');
 const patientRoutes = require('./routes/patientRoutes');
 const testGlucosaRoutes = require('./routes/testGlucosaRoutes');
 const connectionStatusRoutes = require('./routes/connectionStatusRoutes');
+const settingRoutes = require('./routes/settingRoutes');
 
 // Import routes Bridgings
 const testGlucosaBridgingRoutes = require('./routes/testGlucosaBridgingRoutes');
@@ -85,6 +86,7 @@ app.use('/api/permission', permissionRoutes);
 app.use('/api/patients', patientRoutes);
 app.use('/api/test-glucosa', testGlucosaRoutes);
 app.use('/api/connection-status', connectionStatusRoutes);
+app.use('/api/setting', settingRoutes);
 
 //Routes Bridgings
 app.use('/app/test-glucosa', testGlucosaBridgingRoutes);
