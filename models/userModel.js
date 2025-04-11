@@ -146,6 +146,89 @@ const User = {
         return result.affectedRows > 0; // Return true jika berhasil diperbarui
     },
 
+    updateUser: async (id, name, email) => {
+        // Validate input
+        if (!name || !email) {
+            throw new Error('Name and email are required');
+        }
+
+        // Email format validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            throw new Error('Invalid email format');
+        }
+
+        // Execute update query
+        const [result] = await db.query(
+            'UPDATE users SET name = ?, email = ? WHERE id = ?',
+            [name, email, id]
+        );
+
+        // Return boolean indicating if update was successful
+        return result.affectedRows > 0;
+    },
+
+    // Update user roles
+    updateRoles: async (userId, roles) => {
+        // Validate input roles
+        if (!Array.isArray(roles)) {
+            throw new Error('Roles must be an array');
+        }
+
+        // Delete existing roles for the user
+        await db.query("DELETE FROM user_roles WHERE user_id = ?", [userId]);
+
+        // If roles array is empty, return true (no roles to add)
+        if (roles.length === 0) {
+            return true;
+        }
+
+        // Prepare values for bulk insert
+        const values = roles.map((roleId) => [userId, roleId]);
+
+        // Insert new roles
+        const [result] = await db.query(
+            "INSERT INTO user_roles (user_id, role_id) VALUES ?",
+            [values]
+        );
+
+        // Return true if roles were successfully updated
+        return result.affectedRows > 0;
+    },
+
+    // Update role permissions
+    updatePermissions: async (roleIds, permissions) => {
+        // Validate input
+        if (!Array.isArray(roleIds) || !Array.isArray(permissions)) {
+            throw new Error('RoleIds and Permissions must be arrays');
+        }
+
+        // Update permissions for each role
+        const updateResults = await Promise.all(roleIds.map(async (roleId) => {
+            // Delete existing permissions for the role
+            await db.query("DELETE FROM role_permissions WHERE role_id = ?", [roleId]);
+
+            // If no new permissions, return true
+            if (permissions.length === 0) {
+                return true;
+            }
+
+            // Prepare values for bulk insert
+            const values = permissions.map((permissionId) => [roleId, permissionId]);
+
+            // Insert new permissions
+            const [result] = await db.query(
+                "INSERT INTO role_permissions (role_id, permission_id) VALUES ?",
+                [values]
+            );
+
+            // Return true if permissions were successfully updated
+            return result.affectedRows > 0;
+        }));
+
+        // Return an array of results for each role
+        return updateResults;
+    }
 };
 
 module.exports = User;

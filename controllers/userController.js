@@ -83,24 +83,24 @@ const UserController = {
     // Mendapatkan daftar semua pengguna
     getAllUsers: async (req, res) => {
         const { page = 1, limit = 10, search = '' } = req.query;
-    
+
         // Pastikan parameter `page` dan `limit` adalah angka
         const pageNumber = parseInt(page, 10) || 1;
         const limitNumber = parseInt(limit, 10) || 10;
-    
+
         // Hitung offset
         const offset = (pageNumber - 1) * limitNumber;
-    
+
         try {
             // Dapatkan data pengguna dengan limit, offset, dan search
             const users = await User.getAllWithPagination(limitNumber, offset, search);
-    
+
             // Hitung total data pengguna yang cocok dengan search
             const totalUsers = await User.getTotalCount(search);
-    
+
             // Hitung total halaman
             const totalPages = Math.ceil(totalUsers / limitNumber);
-    
+
             res.status(200).send({
                 status: 'success',
                 message: 'Users retrieved successfully',
@@ -121,7 +121,7 @@ const UserController = {
                 data: { error: error.message },
             });
         }
-    },    
+    },
     // getAllUsers: async (req, res) => {
     //     try {
     //         const users = await User.getAll();
@@ -221,6 +221,197 @@ const UserController = {
         }
     },
 
+    updateUserDetail: async (req, res) => {
+        const { id } = req.params;
+        const { name, email, roles, permissions } = req.body;
+
+        // Parse roles to ensure it's an array of numbers
+        const parseRoles = (inputRoles) => {
+            if (!inputRoles) return [];
+
+            const parsedRoles = Array.isArray(inputRoles)
+                ? inputRoles
+                : (typeof inputRoles === 'string'
+                    ? JSON.parse(inputRoles)
+                    : [inputRoles]);
+
+            return parsedRoles.map(role => Number(role)).filter(role => !isNaN(role));
+        };
+
+        // Parse permissions to ensure it's an array of numbers
+        const parsePermissions = (inputPermissions) => {
+            if (!inputPermissions) return [];
+
+            const parsedPermissions = Array.isArray(inputPermissions)
+                ? inputPermissions
+                : (typeof inputPermissions === 'string'
+                    ? JSON.parse(inputPermissions)
+                    : [inputPermissions]);
+
+            return parsedPermissions.map(perm => Number(perm)).filter(perm => !isNaN(perm));
+        };
+
+        // Validate input
+        if (!id || !name || !email) {
+            return res.status(400).send({
+                status: 'error',
+                message: 'User ID, name, and email are required',
+                data: null,
+            });
+        }
+
+        // Parse roles and permissions
+        const roleIds = parseRoles(roles);
+        const permissionIds = parsePermissions(permissions);
+
+        try {
+            // Update user info
+            const userUpdated = await User.updateUser(id, name, email);
+            if (!userUpdated) {
+                return res.status(404).send({
+                    status: 'error',
+                    message: 'User not found',
+                    data: null,
+                });
+            }
+            // Update roles if provided
+            let roleUpdateResult = null;
+            if (roleIds.length > 0) {
+                // Validate roles existence
+                const [roleExists] = await db.query('SELECT id FROM roles WHERE id IN (?)', [roleIds]);
+
+                if (roleExists.length !== roleIds.length) {
+                    return res.status(404).send({
+                        status: 'error',
+                        message: 'One or more roles not found',
+                        data: {
+                            rolesRequested: roleIds,
+                            rolesFound: roleExists.map(r => r.id)
+                        },
+                    });
+                }
+
+                // Update user roles
+                roleUpdateResult = await User.updateRoles(id, roleIds);
+                if (!roleUpdateResult) {
+                    return res.status(500).send({
+                        status: 'error',
+                        message: 'Failed to update user roles',
+                        data: null,
+                    });
+                }
+
+                // Update permissions for the first role if permissions provided
+                if (permissionIds.length > 0) {
+                    // Validate permissions existence
+                    const [permissionExists] = await db.query('SELECT id FROM permissions WHERE id IN (?)', [permissionIds]);
+
+                    if (permissionExists.length !== permissionIds.length) {
+                        return res.status(404).send({
+                            status: 'error',
+                            message: 'One or more permissions not found',
+                            data: {
+                                permissionsRequested: permissionIds,
+                                permissionsFound: permissionExists.map(p => p.id)
+                            },
+                        });
+                    }
+
+                    // Update permissions for the first role
+                    const permissionUpdateResult = await User.updatePermissions([roleIds[0]], permissionIds);
+
+                    if (!permissionUpdateResult.some(result => result)) {
+                        return res.status(500).send({
+                            status: 'error',
+                            message: 'Failed to update role permissions',
+                            data: null,
+                        });
+                    }
+                }
+            }
+
+            // Fetch updated user details with roles and permissions
+            const [userData] = await db.query(`
+                SELECT 
+                    u.id, 
+                    u.name, 
+                    u.email,
+                    r.id AS role_id,
+                    r.name AS role_name,
+                    r.description AS role_description,
+                    p.id AS permission_id,
+                    p.name AS permission_name,
+                    p.description AS permission_description
+                FROM 
+                    users u
+                LEFT JOIN user_roles ur ON u.id = ur.user_id
+                LEFT JOIN roles r ON ur.role_id = r.id
+                LEFT JOIN role_permissions rp ON r.id = rp.role_id
+                LEFT JOIN permissions p ON rp.permission_id = p.id
+                WHERE 
+                    u.id = ?
+            `, [id]);
+
+            // Process user data
+            if (!userData || userData.length === 0) {
+                return res.status(404).send({
+                    status: 'error',
+                    message: 'User not found',
+                    data: null,
+                });
+            }
+
+            const rolesMap = new Map();
+            const permissionsArray = [];
+
+            userData.forEach(row => {
+                // Add unique roles
+                if (row.role_id && !rolesMap.has(row.role_id)) {
+                    rolesMap.set(row.role_id, {
+                        id: row.role_id,
+                        name: row.role_name,
+                        description: row.role_description
+                    });
+                }
+
+                // Add unique permissions
+                if (row.permission_id) {
+                    const existingPermission = permissionsArray.find(p => p.id === row.permission_id);
+                    if (!existingPermission) {
+                        permissionsArray.push({
+                            id: row.permission_id,
+                            name: row.permission_name,
+                            description: row.permission_description
+                        });
+                    }
+                }
+            });
+            const responseData = {
+                status: 'success',
+                message: 'User details retrieved successfully',
+                data: {
+                    user: {
+                        id: userData[0].id,
+                        name: userData[0].name,
+                        email: userData[0].email
+                    },
+                    roles: Array.from(rolesMap.values()),
+                    permissions: permissionsArray
+                }
+            };
+
+            // Successful response
+            res.status(200).send(responseData);
+
+        } catch (error) {
+            console.error('Full error details:', error);
+            res.status(500).send({
+                status: 'error',
+                message: 'Failed to update user',
+                data: { error: error.message },
+            });
+        }
+    },
 };
 
 module.exports = UserController;

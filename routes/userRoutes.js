@@ -20,4 +20,6 @@ router.post('/assign-role', authorize('assign_role'), UserController.assignRole)
 // update role ke penggun
 router.put('/update-assign-role', authorize('assign_role'), UserController.updateAssignRole);
 
+router.put("/detail_user/:id", UserController.updateUserDetail);
+
 module.exports = router;
