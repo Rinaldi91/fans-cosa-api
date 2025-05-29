@@ -17,6 +17,14 @@ const validateInput = (req, res) => {
     }
 };
 
+const ROLES = {
+    SUPER_ADMIN: 1,
+    ADMIN: 2,
+    USER: 3,
+    USER_BRIDGING: 5
+};
+
+
 const hashPassword = (password) => {
     return bcrypt.hashSync(password, 10); // Hash password dengan salt rounds 10
 };
@@ -31,18 +39,73 @@ const getRoleId = async (userId) => {
     return rows[0].role_id;
 };
 
-const generateToken = (user, roleId) => {
-    return jwt.sign(
-        {
-            i: user.id,
-            name: user.name,
-            e: user.email.slice(0, 2),
-            roleId: roleId,
-        },
-        SECRET_KEY,
-        { expiresIn: '1h', algorithm: 'HS256' }
-    );
+const getStaticTokenForUser = async (userId) => {
+    const [rows] = await db.query('SELECT token FROM static_tokens WHERE user_id = ?', [userId]);
+    if (rows.length === 0) return null;
+    return rows[0].token;
 };
+
+const generateToken = async (user, roleId) => {
+    // Token biasa untuk semua role (termasuk User Bridging)
+    const payload = {
+        i: user.id,
+        name: user.name,
+        e: user.email.slice(0, 2),
+        roleId: roleId,
+    };
+
+    // Untuk User Bridging, buat token tanpa expiry
+    if (roleId === ROLES.USER_BRIDGING) {
+        return jwt.sign(payload, SECRET_KEY, {
+            algorithm: 'HS256',
+            // Tidak ada expiresIn, sehingga token tidak akan expire
+        });
+    }
+
+    // Token dengan expiry untuk role lain
+    return jwt.sign(payload, SECRET_KEY, {
+        algorithm: 'HS256',
+        expiresIn: '24h',
+    });
+};
+
+const getOrCreateStaticToken = async (user, roleId) => {
+    if (roleId === ROLES.USER_BRIDGING) {
+        // Cek apakah sudah ada static token di database
+        let staticToken = await getStaticTokenForUser(user.id);
+        
+        if (!staticToken) {
+            // Jika belum ada, generate token baru dan simpan ke database
+            staticToken = await generateToken(user, roleId);
+            
+            // Simpan token ke database (pastikan tabel static_tokens sudah ada)
+            await db.query(
+                'INSERT INTO static_tokens (user_id, token, created_at) VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE token = VALUES(token), updated_at = NOW()',
+                [user.id, staticToken]
+            );
+        }
+        
+        return staticToken;
+    }
+    
+    // Untuk role lain, langsung generate token biasa
+    return await generateToken(user, roleId);
+};
+
+
+// Helper function untuk mendapatkan nama role berdasarkan roleId
+const getRoleName = (roleId) => {
+    const roleNames = {
+        1: 'Super Admin',
+        2: 'Admin',
+        3: 'User',
+        5: 'User Bridging'
+    };
+    return roleNames[roleId] || 'Unknown';
+};
+
+
+
 
 // AuthController
 const AuthController = {
@@ -52,23 +115,23 @@ const AuthController = {
         body('email').isEmail().withMessage('Invalid email format'),
         body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters long'),
         body('role_id').isInt({ min: 1 }).withMessage('Role ID must be a valid integer'),
-    
+
         async (req, res) => {
             try {
                 // Validasi input
                 validateInput(req, res);
-    
+
                 const { name, email, password, role_id } = req.body;
-    
+
                 // Hash password
                 const hashedPassword = hashPassword(password);
-    
+
                 // Create user
                 const user = await User.create(name, email, hashedPassword);
-    
+
                 // Tambahkan role_id yang diinputkan dari request
                 await db.query('INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)', [user.id, role_id]);
-    
+
                 res.status(201).send({
                     status: 'success',
                     message: 'User registered successfully',
@@ -132,15 +195,28 @@ const AuthController = {
                 // Dapatkan roleId berdasarkan user.id
                 const roleId = await getRoleId(user.id);
 
-                // Generate token
-                const token = generateToken(user, roleId);
+                // Dapatkan nama role
+                const roleName = getRoleName(roleId);
+
+                // Cek apakah user adalah User Bridging
+                const isUserBridging = roleId === ROLES.USER_BRIDGING;
+
+                // Generate token dengan expiry berdasarkan role
+                // const token = generateToken(user, roleId);
+                // const token = await generateToken(user, roleId);
+                const token = await getOrCreateStaticToken(user, roleId);
+
+                // Set cookie expiry berdasarkan role
+                const cookieExpiry = isUserBridging
+                    ? new Date(Date.now() + 10 * 365 * 24 * 60 * 60 * 1000) // 10 tahun untuk User Bridging
+                    : new Date(Date.now() + 24 * 60 * 60 * 1000); // 1 hari untuk role lainnya
 
                 // Kirim token dalam HTTP-only cookie
                 res.cookie('token', token, {
                     httpOnly: true,
-                    secure: process.env.NODE_ENV === 'production', // Aktifkan HTTPS di production
+                    secure: process.env.NODE_ENV === 'production',
                     sameSite: 'lax',
-                    expires: new Date(Date.now() + 3600 * 1000), // 1 jam
+                    expires: cookieExpiry,
                 });
 
                 // Kirim response
@@ -151,6 +227,9 @@ const AuthController = {
                         id: user.id,
                         name: user.name,
                         email: user.email,
+                        role: roleName,
+                        roleId: roleId,
+                        tokenExpiry: isUserBridging ? 'No expiry (permanent)' : '24 hours',
                         ...(process.env.NODE_ENV === 'development' && { token: token })
                     },
                 };

@@ -16,7 +16,7 @@ const authorize = (requiredPermission) => {
 
             // Ambil izin dari database berdasarkan roleId
             const [permissions] = await db.query(
-                `SELECT permissions.name 
+                `SELECT permissions.slug 
                  FROM role_permissions 
                  JOIN permissions ON role_permissions.permission_id = permissions.id 
                  WHERE role_permissions.role_id = ?`,
@@ -32,7 +32,7 @@ const authorize = (requiredPermission) => {
                 });
             }
 
-            const permissionNames = permissions.map((p) => p.name);
+            const permissionNames = permissions.map((p) => p.slug);
 
             // Periksa apakah permission yang diminta ada
             if (!permissionNames.includes(requiredPermission)) {

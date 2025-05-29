@@ -1,100 +1,48 @@
+const MappingPatient = require('../models/mappingPatientsModel');
 const Patient = require('../models/patientModel');
 
-const PatientsController = {
-    // Membuat pasien baru
-    createPatient: async (req, res) => {
-        const {
-            
-            nik,
-            name,
-            gender,
-            place_of_birth,
-            date_of_birth,
-            address,
-            number_phone,
-            email
-        } = req.body;
-
-        // Validasi NIK (16 digit)
-        if (!nik || nik.length !== 16 || !/^\d+$/.test(nik)) {
-            return res.status(400).send({
-                status: 'error',
-                message: 'NIK must be exactly 16 numeric characters',
-                data: null
-            });
-        }
-
-        // Validasi nomor telepon (11-12 digit)
-        if (!number_phone || number_phone.length < 11 || number_phone.length > 12 || !/^\d+$/.test(number_phone)) {
-            return res.status(400).send({
-                status: 'error',
-                message: 'Phone number must be 11-12 numeric characters',
-                data: null
-            });
-        }
-
-        // Validasi email
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!email || !emailRegex.test(email)) {
-            return res.status(400).send({
-                status: 'error',
-                message: 'Invalid email format',
-                data: null
-            });
-        }
-
-        // Validasi input wajib lainnya
-        const requiredFields = [
-            { field: 'name', message: 'Name is required' },
-            { field: 'gender', message: 'Gender is required' },
-            { field: 'place_of_birth', message: 'Place of birth is required' },
-            { field: 'date_of_birth', message: 'Date of birth is required' },
-            { field: 'address', message: 'Address is required' }
-        ];
-
-        for (const { field, message } of requiredFields) {
-            if (!req.body[field]) {
-                return res.status(400).send({
-                    status: 'error',
-                    message: message,
-                    data: null
-                });
-            }
-        }
-
+const MappingPatientsController = {
+    //controller
+    createMappingPatient: async (req, res) => {
         try {
-            const patient = await Patient.create({
-                nik,
-                name,
-                gender,
-                place_of_birth,
-                date_of_birth,
-                address,
-                number_phone,
-                email,
-                status: 'active' // Default status
-            });
+            const data = req.body;
 
-            res.status(201).send({
+            // Panggil langsung fungsi create dari model
+            const patient = await MappingPatient.create(data);
+
+            return res.status(201).json({
                 status: 'success',
                 message: 'Patient created successfully',
+                statusCode: 201,
                 data: patient
             });
         } catch (error) {
-            // Handle unique constraint violations
-            if (error.name === 'SequelizeUniqueConstraintError') {
-                return res.status(400).send({
+            // Jika error berupa string JSON (validasi dari model)
+            if (error.message && error.message.startsWith('{')) {
+                return res.status(400).json({
                     status: 'error',
-                    message: 'Patient with this NIK or email already exists',
-                    data: null
+                    message: 'Validation failed',
+                    statusCode: 400,
+                    errors: JSON.parse(error.message)
                 });
             }
 
-            // Generic error handling
-            res.status(500).send({
+            // Handle Sequelize Unique Constraint Error
+            if (error.name === 'SequelizeUniqueConstraintError') {
+                return res.status(400).json({
+                    status: 'error',
+                    message: 'Patient with this NIK or email already exists',
+                    statusCode: 400,
+                    errors: null
+                });
+            }
+
+            // General error
+            return res.status(500).json({
                 status: 'error',
                 message: 'Failed to create patient',
-                data: { error: error.message }
+                statusCode: 500,
+                error: error.message
             });
         }
     },
@@ -346,12 +294,12 @@ const PatientsController = {
             console.log("Calling getTotalPatientsPerMonth function...");
             const patientData = await Patient.totalPatientsPerMonth();
             console.log("Query result:", patientData);
-    
+
             const formattedData = patientData.map(item => ({
                 month: item.month,
                 totalPatients: parseInt(item.total_patients)
             }));
-    
+
             res.status(200).send({
                 status: 'success',
                 message: 'Total patients per month retrieved successfully',
@@ -368,4 +316,4 @@ const PatientsController = {
     }
 };
 
-module.exports = PatientsController;
+module.exports = MappingPatientsController;

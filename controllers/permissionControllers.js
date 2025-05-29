@@ -55,9 +55,12 @@ const PermissionController = {
                 data: null,
             });
         }
-
+        
         try {
-            const permission = await Permission.create(name, description);
+            // Generate slug from name - convert to lowercase and replace spaces with underscores
+            const slug = name.toLowerCase().replace(/\s+/g, '_');
+            
+            const permission = await Permission.create(name, slug, description);
             res.status(201).send({
                 status: 'success',
                 message: 'Permission created successfully',
@@ -66,7 +69,7 @@ const PermissionController = {
         } catch (error) {
             res.status(500).send({
                 status: 'error',
-                message: 'Failed to create role',
+                message: 'Failed to create permission',
                 data: { error: error.message },
             });
         }

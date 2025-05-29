@@ -15,9 +15,13 @@ router.post('/', authorize('create_test_glucosa'), testGlucosaController.createT
 //all glucose tests
 router.get('/', authorize('view_test_glucosa'), testGlucosaController.getAllTestPatients);
 
+
 // Dapatkan tes gula darah berdasarkan ID pasien
 router.get('/patient/:patient_id', authorize('view_test_glucosa'), testGlucosaController.getPatientTests);
-router.get('/patient/:patient_id/glucose-tests', authorize('view_test_glucosa'), testGlucosaController.getPatientTestsAll);
+//test result by id patient no pagination
+router.get('/patient/:patient_id/glucose-tests', authorize('view_test_glucosa'), testGlucosaController.getPatientTestNoPagination);
+//test reasult by id patient with pagination
+router.get('/patient/:patient_id/glucose-tests/pagination', authorize('view_test_glucosa'), testGlucosaController.getPatientTestWithPagination);
 
 // Update tes gula darah
 router.put('/:id', authorize('update_test_glucosa'), testGlucosaController.updateTest);
@@ -31,10 +35,13 @@ router.delete('/:id', authorize('delete_test_glucosa'), testGlucosaController.de
 router.post('/sync-glucosa-tests', authorize('update_test_glucosa'), testGlucosaController.syncGlucosaTests);
 
 //Dashboard
-router.get('/counts_is_validation_done', authorize('view_test_glucosa'), testGlucosaController.totalResultIsValidationDone);
-router.get('/counts_is_validation_not_done', authorize('view_test_glucosa'), testGlucosaController.totalResultIsValidationNotDone);
-router.get('/counts_total_results', authorize('view_test_glucosa'), testGlucosaController.totalResult);
-router.get('/counts_total_results_month', authorize('view_test_glucosa'), testGlucosaController.totalTestResultsPerMonth);
-router.get('/counts_total_new_results', authorize('view_test_glucosa'), testGlucosaController.totalTestResults);
+router.get('/counts_is_validation_done', authorize('view_dashboard'), testGlucosaController.totalResultIsValidationDone);
+router.get('/counts_is_validation_not_done', authorize('view_dashboard'), testGlucosaController.totalResultIsValidationNotDone);
+router.get('/counts_total_results', authorize('view_dashboard'), testGlucosaController.totalResult);
+router.get('/counts_total_results_month', authorize('view_dashboard'), testGlucosaController.totalTestResultsPerMonth);
+router.get('/counts_total_new_results', authorize('view_dashboard'), testGlucosaController.totalTestResults);
+
+//test result by id
+router.get('/:id', authorize('view_test_glucosa'), testGlucosaController.getGlucosaTestById);
 
 module.exports = router;

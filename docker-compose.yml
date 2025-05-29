@@ -14,9 +14,9 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
 
-  fans-cosa-api:
+  fans-fans-cosa-api:
     build: .
-    container_name: fans-cosa-api
+    container_name: fans-fans-cosa-api
     restart: always
     depends_on:
       - mysql-db

@@ -1,9 +1,14 @@
 const db = require('../config/db');
 
-const Patient = {
+const MappingPatient = {
     // Membuat data pasien baru
     create: async (data) => {
         const {
+            no_rm,
+            no_registrasi,
+            lab_number,
+            referral_doctor,
+            room,
             nik,
             name,
             gender,
@@ -16,8 +21,9 @@ const Patient = {
 
         const errors = {};
         const requiredFields = [
-            "nik", "name", "gender", "place_of_birth", "date_of_birth",
-            "address", "number_phone", "email"
+            "no_rm", "no_registrasi", "lab_number", "referral_doctor", "room",
+            "name", "gender", "place_of_birth", "date_of_birth",
+            "address"
         ];
 
         requiredFields.forEach(field => {
@@ -26,7 +32,7 @@ const Patient = {
             }
         });
 
-        // Validasi NIK (16 digit dan hanya angka)
+        // Validasi NIK
         if (nik && (nik.length !== 16 || !/^\d+$/.test(nik))) {
             errors.nik = "NIK must be exactly 16 digits and contain only numbers";
         }
@@ -42,7 +48,7 @@ const Patient = {
             }
         }
 
-        // Validasi email format
+        // Validasi email
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (email && !emailRegex.test(email)) {
             errors.email = "Invalid email format";
@@ -52,34 +58,62 @@ const Patient = {
             throw new Error(JSON.stringify(errors));
         }
 
-        // Set status default ke 'active'
+        // Set status default
         const status = 'active';
 
-        // Masukkan data awal tanpa barcode dan patient_code
-        const [result] = await db.query(
-            'INSERT INTO patients (nik, name, gender, place_of_birth, date_of_birth, address, number_phone, email, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            [nik, name, gender, place_of_birth, date_of_birth, address, number_phone, email, status]
+        // Masukkan data ke mapping_patients TERLEBIH DAHULU
+        const [resultMapping] = await db.query(
+            'INSERT INTO mapping_patients (no_rm, no_registrasi, lab_number, referral_doctor, room, nik, name, gender, place_of_birth, date_of_birth, address, number_phone, email, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [no_rm, no_registrasi, lab_number, referral_doctor, room, nik || null, name, gender, place_of_birth, date_of_birth, address, number_phone || null, email || null, status]
         );
 
-        // Generate barcode dan patient_code berdasarkan ID pasien yang baru dibuat
-        const id = result.insertId;
-        const patient_code = `PAT${id.toString().padStart(6, '0')}`; // Format: PAT000001
-        const barcode = `BC${id.toString().padStart(8, '0')}`;      // Format: BC00000001
+        // Sekarang setelah resultMapping ada, kita bisa ambil insertId
+        const id = resultMapping.insertId;
 
-        // Update pasien dengan barcode dan patient_code
-        await db.query('UPDATE patients SET patient_code = ?, barcode = ? WHERE id = ?', [patient_code, barcode, id]);
+        // Generate kode pasien dan barcode
+        const patient_code = `PAT${id.toString().padStart(6, '0')}`;
+        const barcode = `BC${id.toString().padStart(8, '0')}`;
+
+        // Update record dengan patient_code dan barcode
+        await db.query(
+            'UPDATE mapping_patients SET patient_code = ?, barcode = ? WHERE id = ?',
+            [patient_code, barcode, id]
+        );
+
+        // Masukkan juga ke tabel patients
+        await db.query(
+            'INSERT INTO patients (no_rm, no_registrasi, lab_number, referral_doctor, room, nik, name, gender, place_of_birth, date_of_birth, address, number_phone, email, status, patient_code, barcode) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [no_rm, no_registrasi, lab_number, referral_doctor, room, nik, name, gender, place_of_birth, date_of_birth, address, number_phone || null, email || null, status, patient_code, barcode]
+        );
 
         // Kembalikan data pasien
-        return { id, patient_code, barcode, nik, name, gender, place_of_birth, date_of_birth, address, number_phone, email, status };
+        return {
+            id,
+            patient_code,
+            barcode,
+            no_rm,
+            no_registrasi,
+            lab_number,
+            referral_doctor,
+            room,
+            nik,
+            name,
+            gender,
+            place_of_birth,
+            date_of_birth,
+            address,
+            number_phone,
+            email,
+            status
+        };
     },
 
-    // Mendapatkan semua data pasien// Mendapatkan data pasien dengan pagination
     // Mendapatkan data pasien dengan pagination dan filter pencarian
     getAllWithPagination: async (limit, offset, search = '') => {
         // Menggunakan parameter search dalam query dan memastikan pasien dengan id = 0 tidak ditampilkan
         const query = `
             SELECT * 
-            FROM patients
+            FROM mapping_patients
             WHERE (name LIKE ? OR patient_code LIKE ? OR barcode LIKE ? OR nik LIKE ?)
             AND id != 0
             AND created_at IS NOT NULL
@@ -97,6 +131,19 @@ const Patient = {
         return rows;
     },
 
+    // Mendapatkan total jumlah pasien, tanpa menghitung pasien dengan id = 0
+    getTotalCount: async () => {
+        const [rows] = await db.query(`SELECT COUNT(*) AS count FROM mapping_patients WHERE id != 0`);
+        return rows[0].count;
+    },
+
+    // Mendapatkan pasien berdasarkan ID
+    getById: async (id) => {
+        const [rows] = await db.query(`SELECT * FROM mapping_patients WHERE id = ?`, [id]);
+        return rows[0] || null;
+    },
+
+
     totalPatientsPerMonth: async () => {
         const [rows] = await db.query(`
             SELECT 
@@ -110,32 +157,16 @@ const Patient = {
         return rows;
     },
 
-    getAllNoPagination: async () => {
-        try {
-            // Pastikan koneksi database berjalan dengan baik
-            const [rows] = await db.query(`SELECT * FROM patients WHERE id != 0`);
-            return rows;
-        } catch (error) {
-            console.error('Database Query Error:', error);
-            throw new Error('Failed to fetch patients');
-        }
-    },
-
-    // Mendapatkan total jumlah pasien, tanpa menghitung pasien dengan id = 0
-    getTotalCount: async () => {
-        const [rows] = await db.query(`SELECT COUNT(*) AS count FROM patients WHERE id != 0`);
-        return rows[0].count;
-    },
-
-    // Mendapatkan pasien berdasarkan ID
-    getById: async (id) => {
-        const [rows] = await db.query(`SELECT * FROM patients WHERE id = ?`, [id]);
-        return rows[0] || null;
-    },
 
     // Memperbarui data pasien
     update: async (id, data) => {
         const {
+            no_rm,
+            no_registrasi,
+            lab_number,
+            referral_doctor,
+            room,
+            nik,
             name,
             gender,
             place_of_birth,
@@ -174,6 +205,27 @@ const Patient = {
         const updateValues = [];
 
         // Tambahkan field yang akan diupdate
+        if (no_rm) {
+            updateFields.no_rm = no_rm;
+            updateValues.push(no_rm);
+        }
+        if (no_registrasi) {
+            updateFields.no_registrasi = no_registrasi;
+            updateValues.push(no_registrasi);
+        }
+        if (lab_number) {
+            updateFields.lab_number = lab_number;
+            updateValues.push(lab_number);
+        }
+        if (referral_doctor) {
+            updateFields.referral_doctor = referral_doctor;
+            updateValues.push(referral_doctor);
+        }
+        if (room) {
+            updateFields.room = room;
+            updateValues.push(room);
+        }
+
         if (nik) {
             updateFields.nik = nik;
             updateValues.push(nik);
@@ -238,12 +290,10 @@ const Patient = {
 
     // Menghapus data pasien
     delete: async (id) => {
-        const [result] = await db.query(`DELETE FROM mapping_patients WHERE id = ?`, [id]);
+        const [result] = await db.query(`DELETE FROM patients WHERE id = ?`, [id]);
         return result.affectedRows > 0;
     },
 
-    //menampilkan data pasient yang terdaftar berdasarkan bulan
-    
 };
 
-module.exports = Patient;
+module.exports = MappingPatient;

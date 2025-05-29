@@ -228,7 +228,12 @@ const User = {
 
         // Return an array of results for each role
         return updateResults;
-    }
+    },
+
+    delete: async (id) => {
+        const [result] = await db.query('DELETE FROM users WHERE id = ?', [id]);
+        return result.affectedRows > 0;
+    },
 };
 
 module.exports = User;

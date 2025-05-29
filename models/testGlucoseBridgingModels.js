@@ -1,98 +1,157 @@
-const dbBridging = require('../config/dbBridging');
+const db = require('../config/db');
 
-class TestGlucosaBridgingModel {
-    static async getAllTestBridging(limit = 10, offset = 0, filters = {}) {
-        try {
-            // Bangun query utama
-            let query = `
-                SELECT gt.*, p.name AS patient_name 
-                FROM glucosa_test gt
-                JOIN patients p ON gt.patient_id = p.id
-            `;
+const TestGlucosaBridgingModel = {
+    getAllWithPagination: async (limit, offset, search = '', filters = {}) => {
+        let query = `
+        SELECT 
+            gt.id, 
+            gt.date_time, 
+            gt.glucos_value, 
+            gt.unit, 
+            gt.patient_id,
+            gt.sync_status,
+            gt.device_name, 
+            gt.metode, 
+            gt.is_validation, 
+            gt.created_at, 
+            gt.updated_at, 
+            p.name AS patient_name, 
+            p.patient_code AS patient_code 
+        FROM glucosa_test_bridgings gt
+        JOIN patients p ON gt.patient_id = p.id
+        WHERE 1=1
+    `;
 
-            const queryParams = [];
-            const whereConditions = [];
+        const queryParams = [];
 
-            // Filter berdasarkan unit
-            if (filters.unit) {
-                whereConditions.push('gt.unit = ?');
-                queryParams.push(filters.unit);
-            }
-
-            // Filter berdasarkan rentang tanggal
-            if (filters.start_date && filters.end_date) {
-                whereConditions.push('gt.date_time BETWEEN ? AND ?');
-                queryParams.push(filters.start_date, filters.end_date);
-            }
-
-            // Filter berdasarkan patient_id
-            if (filters.patient_id) {
-                whereConditions.push('gt.patient_id = ?');
-                queryParams.push(filters.patient_id);
-            }
-
-            // Tambahkan WHERE clause jika ada kondisi
-            if (whereConditions.length > 0) {
-                query += ' WHERE ' + whereConditions.join(' AND ');
-            }
-
-            // Urutkan dari terbaru ke lama dan tambahkan pagination
-            query += ' ORDER BY gt.date_time DESC LIMIT ? OFFSET ?';
-            queryParams.push(limit, offset);
-
-            console.log("Executing Query:", query, queryParams); // Debugging query
-            const [rows] = await dbBridging.query(query, queryParams);
-
-            // Query untuk count total data (gunakan filter yang sama)
-            let countQuery = `
-                SELECT COUNT(*) as total 
-                FROM glucosa_test gt
-                JOIN patients p ON gt.patient_id = p.id
-            `;
-
-            if (whereConditions.length > 0) {
-                countQuery += ' WHERE ' + whereConditions.join(' AND ');
-            }
-
-            console.log("Executing Count Query:", countQuery, queryParams); // Debugging query count
-            const [countResult] = await dbBridging.query(countQuery, queryParams);
-            const totalCount = countResult[0].total;
-
-            return {
-                data: rows,
-                pagination: {
-                    total_records: totalCount,
-                    total_pages: Math.ceil(totalCount / limit),
-                    current_page: Math.floor(offset / limit) + 1,
-                    per_page: limit
-                }
-            };
-        } catch (error) {
-            console.error("Error fetching glucose tests:", error);
-            throw new Error("Failed to fetch glucose test data.");
-        }
-    }
-
-    static async getAllWithPagination(limit, offset) {
-            const query = `
-                SELECT * 
-                FROM glucosa_test
-                ORDER BY created_at DESC
-                LIMIT ? OFFSET ?
-            `;
-            const [rows] = await dbBridging.query(query, [limit, offset]);
-            return rows;
+        // Filter berdasarkan search (nama atau patient_code)
+        if (search) {
+            query += ` AND (LOWER(p.name) LIKE LOWER(?) OR LOWER(p.patient_code) LIKE LOWER(?))`;
+            queryParams.push(`%${search}%`, `%${search}%`);
         }
 
-    static async getTotalCount() {
-        const [rows] = await dbBridging.query('SELECT COUNT(*) as total FROM glucosa_test');
-        return rows[0].total;
-    }
+        // Filter berdasarkan patient_code spesifik
+        if (filters.patient_code) {
+            query += ` AND LOWER(p.patient_code) LIKE LOWER(?)`;
+            queryParams.push(`%${filters.patient_code}%`);
+        }
 
-    static async insertGlucosaTest (data) {
+        // Filter berdasarkan tanggal spesifik
+        if (filters.date_time) {
+            query += ` AND DATE(gt.date_time) = DATE(?)`;
+            queryParams.push(filters.date_time);
+        }
+
+        // Filter berdasarkan rentang tanggal
+        if (filters.start_date && filters.end_date) {
+            query += ` AND DATE(gt.date_time) BETWEEN DATE(?) AND DATE(?)`;
+            queryParams.push(filters.start_date, filters.end_date);
+        }
+
+        // Filter berdasarkan is_validation
+        if (filters.is_validation !== undefined) {
+            query += ` AND gt.is_validation = ?`;
+            queryParams.push(filters.is_validation);
+        }
+
+        // Filter berdasarkan sync_status
+        if (filters.sync_status !== undefined) {
+            query += ` AND gt.sync_status = ?`;
+            queryParams.push(filters.sync_status);
+        }
+
+        query += `
+        ORDER BY gt.created_at DESC
+        LIMIT ? OFFSET ?
+    `;
+
+        queryParams.push(limit, offset);
+
+        const [rows] = await db.query(query, queryParams);
+
+        return rows;
+    },
+
+    getTotalCount: async (search = '', filters = {}) => {
+        let query = `
+        SELECT COUNT(*) AS total
+        FROM glucosa_test_bridgings gt
+        JOIN patients p ON gt.patient_id = p.id
+        WHERE 1=1
+    `;
+
+        const queryParams = [];
+
+        // Filter berdasarkan search (nama atau patient_code)
+        if (search) {
+            query += ` AND (LOWER(p.name) LIKE LOWER(?) OR LOWER(p.patient_code) LIKE LOWER(?))`;
+            queryParams.push(`%${search}%`, `%${search}%`);
+        }
+
+        // Filter berdasarkan patient_code spesifik
+        if (filters.patient_code) {
+            query += ` AND LOWER(p.patient_code) LIKE LOWER(?)`;
+            queryParams.push(`%${filters.patient_code}%`);
+        }
+
+        // Filter berdasarkan tanggal spesifik
+        if (filters.date_time) {
+            query += ` AND DATE(gt.date_time) = DATE(?)`;
+            queryParams.push(filters.date_time);
+        }
+
+        // Filter berdasarkan rentang tanggal
+        if (filters.start_date && filters.end_date) {
+            query += ` AND DATE(gt.date_time) BETWEEN DATE(?) AND DATE(?)`;
+            queryParams.push(filters.start_date, filters.end_date);
+        }
+
+        // Filter berdasarkan is_validation
+        if (filters.is_validation !== undefined) {
+            query += ` AND gt.is_validation = ?`;
+            queryParams.push(filters.is_validation);
+        }
+
+        // Filter berdasarkan sync_status
+        if (filters.sync_status !== undefined) {
+            query += ` AND gt.sync_status = ?`;
+            queryParams.push(filters.sync_status);
+        }
+
+        const [result] = await db.query(query, queryParams);
+        return result[0].total;
+    },
+
+    getById: async (id) => {
+        const query = `
+        SELECT 
+            gt.id, 
+            gt.date_time, 
+            gt.glucos_value, 
+            gt.unit, 
+            gt.patient_id,
+            gt.sync_status,
+            gt.device_name, 
+            gt.metode, 
+            gt.is_validation, 
+            gt.created_at, 
+            gt.updated_at, 
+            p.name AS patient_name, 
+            p.patient_code AS patient_code 
+        FROM glucosa_test_bridgings gt
+        JOIN patients p ON gt.patient_id = p.id
+        WHERE gt.id = ?
+    `;
+
+        const [rows] = await db.query(query, [id]);
+        return rows[0] || null;
+    },
+
+
+    insertGlucosaTest: async (data) => {
         try {
             const query = `
-                INSERT INTO cosa_app_bridging_db.glucosa_test 
+                INSERT INTO cosa_app_db.glucosa_test_bridgings 
                 (id, date_time, glucos_value, unit, patient_id, device_name, metode, is_validation) 
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             `;
@@ -108,7 +167,7 @@ class TestGlucosaBridgingModel {
                 data.is_validation
             ];
 
-            const [result] = await dbBridging.execute(query, values);
+            const [result] = await db.execute(query, values);
             return result.affectedRows > 0;
         } catch (error) {
             console.error('Error inserting data into bridging database:', error);

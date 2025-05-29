@@ -122,6 +122,7 @@ const UserController = {
             });
         }
     },
+
     // getAllUsers: async (req, res) => {
     //     try {
     //         const users = await User.getAll();
@@ -412,6 +413,60 @@ const UserController = {
             });
         }
     },
+
+    // Delete user by ID
+    deleteUser: async (req, res) => {
+        const { id } = req.params;
+
+        // Validasi input
+        if (!id) {
+            return res.status(400).send({
+                status: 'error',
+                message: 'User ID is required',
+                data: null,
+            });
+        }
+
+        try {
+            // Cek apakah user ada
+            const [user] = await db.query('SELECT id FROM users WHERE id = ?', [id]);
+            if (user.length === 0) {
+                return res.status(404).send({
+                    status: 'error',
+                    message: 'User not found',
+                    data: null,
+                });
+            }
+
+            // Hapus data dari tabel user_roles terlebih dahulu untuk menghindari constraint error
+            await db.query('DELETE FROM user_roles WHERE user_id = ?', [id]);
+
+            // Hapus user
+            const result = await db.query('DELETE FROM users WHERE id = ?', [id]);
+            if (result.affectedRows === 0) {
+                return res.status(500).send({
+                    status: 'error',
+                    message: 'Failed to delete user',
+                    data: null,
+                });
+            }
+
+            res.status(200).send({
+                status: 'success',
+                message: 'User deleted successfully',
+                data: null,
+            });
+
+        } catch (error) {
+            console.error('Full error details:', error);
+            res.status(500).send({
+                status: 'error',
+                message: 'Failed to delete user',
+                data: { error: error.message },
+            });
+        }
+    }
+
 };
 
 module.exports = UserController;

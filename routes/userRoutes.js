@@ -14,6 +14,9 @@ router.get('/', authorize('view_user'), UserController.getAllUsers);
 // Mendapatkan pengguna berdasarkan ID
 router.get('/:id', authorize('view_user'), UserController.getUserById);
 
+//delete user by id
+router.delete('/:id', authorize('delete_user'), UserController.deleteUser);
+
 // Menambahkan role ke pengguna
 router.post('/assign-role', authorize('assign_role'), UserController.assignRole);
 

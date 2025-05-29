@@ -17,9 +17,12 @@ const patientRoutes = require('./routes/patientRoutes');
 const testGlucosaRoutes = require('./routes/testGlucosaRoutes');
 const connectionStatusRoutes = require('./routes/connectionStatusRoutes');
 const settingRoutes = require('./routes/settingRoutes');
+const staticTokenRoutes = require('./routes/staticTokenRoutes');
+const activityLogRoutes = require('./routes/activityLogRoutes');
 
 // Import routes Bridgings
 const testGlucosaBridgingRoutes = require('./routes/testGlucosaBridgingRoutes');
+const mappingPatientRoutes = require('./routes/mappingPatientRoutes');
 
 const logActivity = require('./models/Logs');
 const app = express();
@@ -31,7 +34,8 @@ const allowedOrigins = [
     'http://192.168.18.29:3000',
     'http://localhost:3000',
     'https://*.ngrok.io',
-    'https://*.ngrok-free.app'
+    'https://ad11-66-96-225-166.ngrok-free.app'
+
 ];
 
 const corsOptions = {
@@ -47,6 +51,8 @@ const corsOptions = {
     credentials: true,
     optionsSuccessStatus: 200
 };
+
+
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions)); // Tangani preflight request OPTIONS
 
@@ -87,9 +93,13 @@ app.use('/api/patients', patientRoutes);
 app.use('/api/test-glucosa', testGlucosaRoutes);
 app.use('/api/connection-status', connectionStatusRoutes);
 app.use('/api/setting', settingRoutes);
+app.use('/api/static-token', staticTokenRoutes);
+app.use('/api/activity-log', activityLogRoutes);
 
 //Routes Bridgings
-app.use('/app/test-glucosa', testGlucosaBridgingRoutes);
+app.use('/api/v1/bridging/glucose-test', testGlucosaBridgingRoutes);
+app.use('/api/v1/bridging/mapping-patient', mappingPatientRoutes);
+
 
 // Handling 404
 app.use((req, res) => {

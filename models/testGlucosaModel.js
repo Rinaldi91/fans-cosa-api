@@ -7,8 +7,8 @@ const TestGlucosaModel = {
         const patientId = data.patient_id ? data.patient_id : 0;
 
         const [result] = await db.query(
-            'INSERT INTO glucosa_tests (date_time, glucos_value, unit, patient_id, device_name, metode, is_validation) VALUES (?, ?, ?, ?, ?, ?, ?)',
-            [data.date_time, data.glucos_value, data.unit, patientId, data.device_name, data.metode, data.is_validation] // Gunakan 0 jika tidak ada patient_id
+            'INSERT INTO glucosa_tests (date_time, glucos_value, unit, patient_id, device_name, metode, is_validation, note) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            [data.date_time, data.glucos_value, data.unit, patientId, data.device_name, data.metode, data.is_validation, data.note] // Gunakan 0 jika tidak ada patient_id
         );
 
         return result.insertId;
@@ -235,15 +235,6 @@ const TestGlucosaModel = {
             [patientId]
         );
 
-        // Hitung total tes
-        // const totalTests = rows.length;
-
-        // Kembalikan data tes gula darah dan total tes
-        // return {
-        //     tests: rows,
-        //     totalTests: totalTests
-        // };
-
         return rows;
     },
 
@@ -306,10 +297,16 @@ const TestGlucosaModel = {
                 gt.device_name, 
                 gt.metode, 
                 gt.is_validation, 
+                gt.user_validation, 
+                gt.note,
                 gt.created_at, 
                 gt.updated_at, 
                 p.name AS patient_name, 
-                p.patient_code AS patient_code 
+                p.patient_code AS patient_code, 
+                p.gender AS patient_gender, 
+                p.date_of_birth AS patient_date_of_birth, 
+                p.number_phone AS patient_number_phone, 
+                p.barcode AS patient_barcode
             FROM glucosa_tests gt
             JOIN patients p ON gt.patient_id = p.id
             WHERE 1=1
@@ -391,6 +388,7 @@ const TestGlucosaModel = {
 
         return result[0].total;
     },
+
     syncGlucosaTests: async () => {
         try {
             // Hapus semua data di tabel glucosa_tests_sync
@@ -416,18 +414,19 @@ const TestGlucosaModel = {
         return result.affectedRows > 0;
     },
 
-    // IsValidationTest: async (id) => {
-    //     const [result] = await db.query(
-    //         'UPDATE glucosa_tests SET is_validation = 1 WHERE id = ?',
-    //         [id]
-    //     );
-
-    //     return result.affectedRows > 0;
-    // },
-
     getTestDataById: async (id) => {
         try {
-            const [rows] = await db.query('SELECT * FROM glucosa_tests WHERE id = ?', [id]);
+            const [rows] = await db.query(`
+                SELECT 
+                    gt.*, 
+                    p.name AS patient_name, 
+                    p.gender AS patient_gender, 
+                    p.date_of_birth AS patient_date_of_birth, 
+                    p.number_phone AS patient_number_phone 
+                FROM glucosa_tests gt
+                LEFT JOIN patients p ON gt.patient_id = p.id
+                WHERE gt.id = ?
+            `, [id]);
             return rows.length ? rows[0] : null;
         } catch (error) {
             console.error('Error fetching test data:', error);
@@ -561,6 +560,75 @@ const TestGlucosaModel = {
             console.error('Error updating validation status:', error);
             return false;
         }
+    },
+
+
+    getByPatientIdWithPagination: async (patientId, page = 1, limit = 10, filters = {}) => {
+        // Cek apakah patient ada
+        const [patientCheck] = await db.query('SELECT id FROM patients WHERE id = ?', [patientId]);
+        if (patientCheck.length === 0) {
+            throw new Error('Patient not found');
+        }
+
+        // Hitung offset berdasarkan page dan limit
+        const offset = (page - 1) * limit;
+
+        // Siapkan query dan parameternya
+        let query = 'SELECT * FROM glucosa_tests WHERE patient_id = ?';
+        let countQuery = 'SELECT COUNT(*) as total FROM glucosa_tests WHERE patient_id = ?';
+        const queryParams = [patientId];
+        const countParams = [patientId];
+
+        // Filter berdasarkan date_time spesifik jika disediakan
+        if (filters.date_time) {
+            query += ' AND DATE(date_time) = ?';
+            countQuery += ' AND DATE(date_time) = ?';
+            queryParams.push(filters.date_time);
+            countParams.push(filters.date_time);
+        }
+
+        // Filter berdasarkan rentang date_time jika disediakan
+        if (filters.start_date && filters.end_date) {
+            query += ' AND date_time BETWEEN ? AND ?';
+            countQuery += ' AND date_time BETWEEN ? AND ?';
+            // Tambahkan waktu 00:00:00 untuk start_date dan 23:59:59 untuk end_date
+            queryParams.push(`${filters.start_date} 00:00:00`);
+            queryParams.push(`${filters.end_date} 23:59:59`);
+            countParams.push(`${filters.start_date} 00:00:00`);
+            countParams.push(`${filters.end_date} 23:59:59`);
+        }
+
+        // Filter berdasarkan is_validation jika disediakan
+        if (filters.is_validation !== undefined) {
+            query += ' AND is_validation = ?';
+            countQuery += ' AND is_validation = ?';
+            queryParams.push(parseInt(filters.is_validation));
+            countParams.push(parseInt(filters.is_validation));
+        }
+
+        // Tambahkan ordering dan pagination
+        query += ' ORDER BY date_time DESC LIMIT ? OFFSET ?';
+        queryParams.push(parseInt(limit), parseInt(offset));
+
+        // Eksekusi query untuk data
+        const [rows] = await db.query(query, queryParams);
+
+        // Hitung total data untuk pagination info
+        const [countResult] = await db.query(countQuery, countParams);
+        const totalItems = countResult[0].total;
+        const totalPages = Math.ceil(totalItems / limit);
+
+        return {
+            data: rows,
+            pagination: {
+                total_items: totalItems,
+                total_pages: totalPages,
+                current_page: parseInt(page),
+                items_per_page: parseInt(limit),
+                has_next_page: page < totalPages,
+                has_prev_page: page > 1
+            }
+        };
     },
 }
 

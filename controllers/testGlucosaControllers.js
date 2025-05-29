@@ -3,9 +3,10 @@ const TestGlucosaBridgingModel = require('../models/testGlucoseBridgingModels');
 const db = require('../config/db');
 
 module.exports = {
+    // Tambah tes gula darah baru
     createTest: async (req, res) => {
         try {
-            let { date_time, glucos_value, unit, patient_id, device_name, metode, is_validation } = req.body;
+            let { date_time, glucos_value, unit, patient_id, device_name, metode, is_validation, note } = req.body;
 
             // Jika patient_id kosong atau null, set ke 0
             if (!patient_id) {
@@ -55,6 +56,7 @@ module.exports = {
                 unit,
                 patient_id,
                 device_name,
+                note,
                 metode: "Elektrokimia",
                 is_validation: 0
             });
@@ -91,48 +93,7 @@ module.exports = {
         }
     },
 
-    //get all glucose tests with pagination
-    // getAllTestPatients: async (req, res) => {
-    //     const { page = 1, limit = 10, search = '' } = req.query;
-
-    //     // Pastikan parameter `page` dan `limit` adalah angka
-    //     const pageNumber = parseInt(page, 10) || 1;
-    //     const limitNumber = parseInt(limit, 10) || 10;
-
-    //     // Hitung offset
-    //     const offset = (pageNumber - 1) * limitNumber;
-
-    //     try {
-    //         // Dapatkan data dengan pencarian
-    //         const glucosaTest = await TestGlucosaModel.getAllWithPagination(limitNumber, offset, search);
-
-    //         // Hitung total data dengan pencarian yang sama
-    //         const totalTestPatients = await TestGlucosaModel.getTotalCount(search);
-
-    //         // Hitung total halaman
-    //         const totalPages = Math.ceil(totalTestPatients / limitNumber);
-
-    //         res.status(200).send({
-    //             status: 'success',
-    //             message: 'Glucose tests retrieved successfully',
-    //             data: {
-    //                 glucosaTest,
-    //                 pagination: {
-    //                     currentPage: pageNumber,
-    //                     totalPages,
-    //                     totalTestPatients,
-    //                     perPage: limitNumber,
-    //                 },
-    //             },
-    //         });
-    //     } catch (error) {
-    //         res.status(500).send({
-    //             status: 'error',
-    //             message: 'Failed to retrieve glucose test',
-    //             data: { error: error.message },
-    //         });
-    //     }
-    // },
+    // Mendapatkan semua tes gula darah
     getAllTestPatients: async (req, res) => {
         const {
             page = 1,
@@ -206,6 +167,7 @@ module.exports = {
             });
         }
     },
+
     // Dapatkan tes gula darah berdasarkan ID pasien
     getPatientTests: async (req, res) => {
         try {
@@ -237,8 +199,8 @@ module.exports = {
         }
     },
 
-    // Dapatkan tes gula darah berdasarkan ID pasien no pagination
-    getPatientTestsAll: async (req, res) => {
+    //Detail glucose test by patients
+    getPatientTestNoPagination: async (req, res) => {
         try {
             const { patient_id } = req.params;
 
@@ -335,6 +297,7 @@ module.exports = {
         }
     },
 
+    // Synchronize glucose tests   
     syncGlucosaTests: async (req, res) => {
         try {
             const result = await TestGlucosaModel.syncGlucosaTests();
@@ -348,6 +311,7 @@ module.exports = {
         }
     },
 
+    // Validasi tes gula darah
     updateValidation: async (req, res) => {
         try {
             const { id } = req.params;
@@ -398,56 +362,8 @@ module.exports = {
             return res.status(500).json({ message: 'An error occurred on the server' });
         }
     },
-    // updateValidation: async (req, res) => {
-    //     try {
-    //         const { id } = req.params;
 
-    //         // Validasi jika ID tidak valid
-    //         if (!id || isNaN(id)) {
-    //             return res.status(400).json({ message: 'ID tidak valid' });
-    //         }
-
-    //         // Ambil data yang akan dipindahkan
-    //         const testData = await TestGlucosaModel.getTestDataById(id);
-
-    //         if (!testData) {
-    //             return res.status(404).json({ message: 'Data not found' });
-    //         }
-
-    //         // Update status validasi
-    //         const isUpdated = await TestGlucosaModel.IsValidationTest(id);
-
-    //         if (!isUpdated) {
-    //             return res.status(500).json({ message: 'Failed to update validation status' });
-    //         }
-
-    //         // Insert data ke tabel glucosa_test dalam database cosa_app_bridging_db
-    //         const newData = {
-    //             id: testData.id,
-    //             date_time: testData.date_time,
-    //             glucos_value: testData.glucos_value,
-    //             unit: testData.unit,
-    //             patient_id: testData.patient_id,
-    //             device_name: testData.device_name,
-    //             metode: testData.metode,
-    //             is_validation: 1 // Menandai bahwa data ini sudah divalidasi
-    //         };
-
-    //         const insertResult = await TestGlucosaBridgingModel.insertGlucosaTest(newData);
-
-    //         if (!insertResult) {
-    //             return res.status(500).json({ message: 'Failed to insert data into bridging database' });
-    //         }
-
-    //         return res.status(200).json({ message: 'Validation and data migration successful' });
-
-    //     } catch (error) {
-    //         console.error('Error updating validation:', error);
-    //         return res.status(500).json({ message: 'An error occurred on the server' });
-    //     }
-    // },
-
-    //dashboard
+    // Data untuk tampilans dashboard
     totalResultIsValidationDone: async (req, res) => {
         try {
             const result = await TestGlucosaModel.getTotalResultIsValidationDone();
@@ -544,7 +460,7 @@ module.exports = {
         }
     },
 
-    //buatkan update is_status menjadi 1 pada tabel glucosa_tests
+    //buatkan controller untuk mendapatkan jumlah total glucosa test berdasarkan data terbaru dari created_at
     updateIsStatus: async (req, res) => {
         try {
             const { id } = req.params;
@@ -563,87 +479,113 @@ module.exports = {
         }
     },
 
+    getPatientTestWithPagination: async (req, res) => {
+        try {
+            const { patient_id } = req.params;
+            const {
+                page = 1,
+                limit = 10,
+                date_time,
+                start_date,
+                end_date,
+                is_validation
+            } = req.query;
+
+            // Siapkan objek filter berdasarkan query params yang ada
+            const filters = {};
+
+            if (date_time) filters.date_time = date_time;
+            if (start_date && end_date) {
+                filters.start_date = start_date;
+                filters.end_date = end_date;
+            }
+            if (is_validation !== undefined) filters.is_validation = is_validation;
+
+            try {
+                const result = await TestGlucosaModel.getByPatientIdWithPagination(
+                    patient_id,
+                    parseInt(page),
+                    parseInt(limit),
+                    filters
+                );
+
+                res.status(200).send({
+                    status: 'success',
+                    message: 'Glucose tests retrieved successfully',
+                    data: result.data,
+                    pagination: result.pagination,
+                    applied_filters: Object.keys(filters).length > 0 ? filters : null
+                });
+            } catch (modelError) {
+                // Tangani error spesifik dari model
+                return res.status(404).send({
+                    status: 'error',
+                    message: modelError.message,
+                    data: null
+                });
+            }
+        } catch (error) {
+            res.status(500).send({
+                status: 'error',
+                message: 'Failed to retrieve glucose tests',
+                data: { error: error.message }
+            });
+        }
+    },
+
+    showPatients: async (req, res) => {
+        try {
+            const { patient_id } = req.params;
+
+            try {
+                const data = await TestGlucosaModel.getByPatientIdAll(patient_id);
+
+                res.status(200).send({
+                    status: 'success',
+                    message: 'Glucose tests retrieved successfully',
+                    data // Langsung kirimkan semua data
+                });
+            } catch (modelError) {
+                // Tangani error spesifik dari model
+                return res.status(404).send({
+                    status: 'error',
+                    message: modelError.message,
+                    data: null
+                });
+            }
+        } catch (error) {
+            res.status(500).send({
+                status: 'error',
+                message: 'Failed to retrieve glucose tests',
+                data: { error: error.message }
+            });
+        }
+    },
+
+    getGlucosaTestById: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const testData = await TestGlucosaModel.getTestDataById(id);
+
+            if (!testData) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Test data not found',
+                });
+            }
+
+            res.status(200).json({
+                success: true,
+                message: 'Test data retrieved successfully',
+                data: testData,
+            });
+        } catch (error) {
+            console.error('Error fetching test data:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Internal server error',
+            });
+        }
+    },
+
 };
-
-// Tambah tes gula darah baru
-// createTest: async (req, res) => {
-//     try {
-//         const { date_time, glucos_value, unit, patient_id } = req.body;
-
-//         // Validasi input
-//         if (!date_time || !glucos_value || !unit || !patient_id) {
-//             return res.status(400).send({
-//                 status: 'error',
-//                 message: 'All fields are required',
-//                 data: null
-//             });
-//         }
-
-//         // Validasi nilai gula darah
-//         if (glucos_value <= 0) {
-//             return res.status(400).send({
-//                 status: 'error',
-//                 message: 'Invalid glucose value',
-//                 data: null
-//             });
-//         }
-
-//         // Validasi unit
-//         const validUnits = ['mg/dL', 'mmol/L'];
-//         if (!validUnits.includes(unit)) {
-//             return res.status(400).send({
-//                 status: 'error',
-//                 message: 'Invalid unit. Must be mg/dL or mmol/L',
-//                 data: null
-//             });
-//         }
-
-//         // Tambahkan validasi patient_id
-//         const [patientCheck] = await db.query('SELECT id FROM patients WHERE id = ?', [patient_id]);
-//         if (patientCheck.length === 0) {
-//             return res.status(404).send({
-//                 status: 'error',
-//                 message: 'Patient not found',
-//                 data: null
-//             });
-//         }
-
-//         // Tambahkan test dan dapatkan ID
-//         const testId = await TestGlucosaModel.create(req.body);
-
-//         // Ambil data test yang baru saja dibuat
-//         const [newTest] = await db.query(
-//             'SELECT * FROM glucosa_tests WHERE id = ?',
-//             [testId]
-//         );
-
-//         res.status(201).send({
-//             status: 'success',
-//             message: 'Glucose test added successfully',
-//             data: newTest[0] // Kirim seluruh data test
-//         });
-//     } catch (error) {
-//         // Tangani error unique constraint atau lainnya
-//         if (error.code === 'ER_DUP_ENTRY') {
-//             return res.status(400).send({
-//                 status: 'error',
-//                 message: 'Duplicate entry',
-//                 data: null
-//             });
-//         }
-
-//         res.status(500).send({
-//             status: 'error',
-//             message: 'Failed to add glucose test',
-//             data: { error: error.message }
-//         });
-//     }
-// },
-
-// if (patientCheck.length === 0) {
-//     return res.status(404).send({
-//         status: 'error',
-//         message: 'Patient not found',
-//         data: null
-//     });
-// }

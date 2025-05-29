@@ -1,2 +1,2 @@
-# cosa-api
+# fans-cosa-api
 Glucose Controll Application

@@ -3,9 +3,9 @@ const db = require('../config/db');
 const Permission = {
 
     // Menambahkan permission baru
-    create: async (name, description) => {
-        const [result] = await db.query('INSERT INTO permissions (name, description) VALUES (?, ?)', [name, description]);
-        return { id: result.insertId, name, description };
+    create: async (name, slug, description) => {
+        const [result] = await db.query('INSERT INTO permissions (name, slug, description) VALUES (?, ?, ?)', [name, slug, description]);
+        return { id: result.insertId, name, slug, description };
     },
 
     // Mendapatkan permission berdasarkan ID
