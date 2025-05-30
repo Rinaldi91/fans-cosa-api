@@ -17,3 +17,4 @@
 2025-05-29T02:51:08.446Z | GET /api/activity-log?search=johan | User ID: 1 | Name: Rinaldi | IP: ::ffff:192.168.100.174 | Status: 200 | User-Agent: PostmanRuntime/7.44.0 | Request: {"search":"johan"}
 2025-05-29T02:51:15.322Z | GET /api/activity-log?search=rinaldi | User ID: 1 | Name: Rinaldi | IP: ::ffff:192.168.100.174 | Status: 200 | User-Agent: PostmanRuntime/7.44.0 | Request: {"search":"rinaldi"}
 2025-05-29T02:51:29.838Z | GET /api/activity-log?search=PUT | User ID: 1 | Name: Rinaldi | IP: ::ffff:192.168.100.174 | Status: 200 | User-Agent: PostmanRuntime/7.44.0 | Request: {"search":"PUT"}
+2025-05-30T09:20:04.611Z | POST /auth/login | User ID: NULL | Name: NULL | IP: 127.0.0.1 | Status: 200 | User-Agent: PostmanRuntime/7.44.0 | Request: {"email":"developer@gmail.com","password":"Password"}
