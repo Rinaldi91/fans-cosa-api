@@ -151,7 +151,7 @@ const TestGlucosaBridgingModel = {
     insertGlucosaTest: async (data) => {
         try {
             const query = `
-                INSERT INTO cosa_app_db.glucosa_test_bridgings 
+                INSERT INTO fans_cosa_api_db.glucosa_test_bridgings 
                 (id, date_time, glucos_value, unit, patient_id, device_name, metode, is_validation) 
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             `;
