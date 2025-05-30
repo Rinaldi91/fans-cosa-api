@@ -110,14 +110,6 @@ app.use('/api/v1/bridging/mapping-patient', mappingPatientRoutes);
 app.use('/health', healthRoutes);
 
 // Root endpoint
-app.get('/', (req, res) => {
-    res.json({
-        message: 'Fans Cosa API Server',
-        version: '1.0.0',
-        environment: process.env.NODE_ENV || 'development',
-        timestamp: new Date().toISOString()
-    });
-});
 
 
 // Handling 404

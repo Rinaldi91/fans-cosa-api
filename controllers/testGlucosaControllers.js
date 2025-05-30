@@ -344,7 +344,6 @@ module.exports = {
                 device_name: testData.device_name,
                 metode: testData.metode,
                 is_validation: 1, // Menandai bahwa data ini sudah divalidasi
-                user_validation: userName // Menambahkan informasi user yang melakukan validasi
             };
 
             const insertResult = await TestGlucosaBridgingModel.insertGlucosaTest(newData);
