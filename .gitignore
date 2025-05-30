@@ -19,3 +19,4 @@ uploads/
 
 # Dependencies
 node_modules/".env" 
+.env
