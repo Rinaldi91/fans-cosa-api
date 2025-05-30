@@ -20,29 +20,32 @@ const settingRoutes = require('./routes/settingRoutes');
 const staticTokenRoutes = require('./routes/staticTokenRoutes');
 const activityLogRoutes = require('./routes/activityLogRoutes');
 
+// Import health check route
+const healthRoutes = require('./routes/healthRoutes');
+
 // Import routes Bridgings
 const testGlucosaBridgingRoutes = require('./routes/testGlucosaBridgingRoutes');
 const mappingPatientRoutes = require('./routes/mappingPatientRoutes');
 
 const logActivity = require('./models/Logs');
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5000;
 
 // Middleware CORS
 const allowedOrigins = [
     process.env.FRONTEND_URL,
-    'http://192.168.18.29:3000',
     'http://localhost:3000',
-    'https://*.ngrok.io',
-    'https://ad11-66-96-225-166.ngrok-free.app'
-
-];
+    'http://localhost:5000',
+    'https://admin.fanscosa.co.id',
+    'https://api.fanscosa.co.id'
+];;
 
 const corsOptions = {
     origin: function (origin, callback) {
         if (!origin || allowedOrigins.includes(origin)) {
             callback(null, true);
         } else {
+            console.log(`CORS blocked origin: ${origin}`);
             callback(new Error(`Not allowed by CORS: ${origin}`));
         }
     },
@@ -79,7 +82,10 @@ app.use(logActivity);
         console.log('✅ Connection to database successful');
     } catch (err) {
         console.error('❌ Database connection failed:', err);
-        process.exit(1);
+        // Don't exit in production, let health check handle it
+        if (process.env.NODE_ENV !== 'production') {
+            process.exit(1);
+        }
     }
 })();
 
@@ -99,6 +105,19 @@ app.use('/api/activity-log', activityLogRoutes);
 //Routes Bridgings
 app.use('/api/v1/bridging/glucose-test', testGlucosaBridgingRoutes);
 app.use('/api/v1/bridging/mapping-patient', mappingPatientRoutes);
+
+// Health Check routes
+app.use('/health', healthRoutes);
+
+// Root endpoint
+app.get('/', (req, res) => {
+    res.json({
+        message: 'Fans Cosa API Server',
+        version: '1.0.0',
+        environment: process.env.NODE_ENV || 'development',
+        timestamp: new Date().toISOString()
+    });
+});
 
 
 // Handling 404
@@ -140,14 +159,27 @@ app.use((req, res) => {
 
 // Global Error Handling
 app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).send({
+    console.error('Global error handler:', err.stack);
+    res.status(500).json({
         message: 'Internal Server Error',
-        error: err.message,
+        error: process.env.NODE_ENV === 'production' ? 'Something went wrong' : err.message,
     });
 });
 
+// Graceful shutdown
+process.on('SIGTERM', () => {
+    console.log('SIGTERM received, shutting down gracefully');
+    process.exit(0);
+});
+
+process.on('SIGINT', () => {
+    console.log('SIGINT received, shutting down gracefully');
+    process.exit(0);
+});
+
 // Start server
-app.listen(PORT, () => {
-    console.log(`🚀 Server berjalan di http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Server berjalan di http://0.0.0.0:${PORT}`);
+    console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`📊 Health check: http://0.0.0.0:${PORT}/health`);
 });
