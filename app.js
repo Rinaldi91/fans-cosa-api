@@ -140,6 +140,12 @@ app.use((req, res) => {
                 color: #666;
             }
         </style>
+        <script>
+          // Disable right click
+          document.addEventListener('contextmenu', function(e) {
+              e.preventDefault();
+          });
+        </script>
       </head>
       <body>
         <h1>404 - Not Found</h1>
