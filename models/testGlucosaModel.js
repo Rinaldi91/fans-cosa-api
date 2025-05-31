@@ -406,17 +406,17 @@ const TestGlucosaModel = {
         }
     },
 
-    IsValidationTest: async (id, username, connection = db) => {
-        try {
-            const [result] = await connection.query(
-                'UPDATE glucosa_tests SET is_validation = 1, user_validation = ? WHERE id = ?',
-                [username, id]
-            );
-            return result.affectedRows > 0;
-        } catch (error) {
-            console.error('Error updating validation status:', error);
-            return false;
-        }
+    IsValidationTest: async (id, username) => {
+       try{
+         const [result] = await db.query(
+            'UPDATE glucosa_tests SET is_validation = 1, user_validation = ? WHERE id = ?',
+            [username, id]
+        );
+        return result.affectedRows > 0;
+       }catch(error){
+        console.error('Error updating is_validation:', error);
+        return false;
+       }
     },
 
     getTestDataById: async (id) => {

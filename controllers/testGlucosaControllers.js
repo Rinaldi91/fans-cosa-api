@@ -313,31 +313,28 @@ module.exports = {
 
     // Validasi tes gula darah
     updateValidation: async (req, res) => {
-        const connection = await pool.getConnection(); // buka koneksi
         try {
             const { id } = req.params;
-            const userName = req.user.name;
+            const userName = req.user.name; // Mengambil name dari req.user yang diisi oleh middleware
 
+            // Validasi jika ID tidak valid
             if (!id || isNaN(id)) {
                 return res.status(400).json({ message: 'ID tidak valid' });
             }
 
+            // Ambil data yang akan dipindahkan
             const testData = await TestGlucosaModel.getTestDataById(id);
             if (!testData) {
                 return res.status(404).json({ message: 'Data not found' });
             }
 
-            // Mulai transaksi
-            await connection.beginTransaction();
-
-            // Update status validasi
-            const isUpdated = await TestGlucosaModel.IsValidationTest(id, userName, connection);
+            // Update status validasi dengan menyertakan userName
+            const isUpdated = await TestGlucosaModel.IsValidationTest(id, userName);
             if (!isUpdated) {
-                await connection.rollback();
                 return res.status(500).json({ message: 'Failed to update validation status' });
             }
 
-            // Data yang akan diinsert
+            // Insert data ke tabel glucosa_test dalam database cosa_app_bridging_db
             const newData = {
                 id: testData.id,
                 date_time: testData.date_time,
@@ -346,28 +343,22 @@ module.exports = {
                 patient_id: testData.patient_id,
                 device_name: testData.device_name,
                 metode: testData.metode,
-                is_validation: 1,
+                is_validation: 1, // Menandai bahwa data ini sudah divalidasi
             };
 
-            // Insert data ke tabel bridging
-            const insertResult = await TestGlucosaBridgingModel.insertGlucosaTest(newData, connection);
+            const insertResult = await TestGlucosaBridgingModel.insertGlucosaTest(newData);
             if (!insertResult) {
-                await connection.rollback();
                 return res.status(500).json({ message: 'Failed to insert data into bridging database' });
             }
 
-            // Commit jika semua berhasil
-            await connection.commit();
+            // Kembalikan respons yang menyertakan informasi user
             return res.status(200).json({
                 message: 'Validation and data migration successful',
-                user_validation: userName,
+                user_validation: userName // Mengirimkan kembali informasi user untuk digunakan di frontend
             });
         } catch (error) {
-            await connection.rollback();
             console.error('Error updating validation:', error);
             return res.status(500).json({ message: 'An error occurred on the server' });
-        } finally {
-            connection.release();
         }
     },
 
