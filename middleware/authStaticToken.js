@@ -13,12 +13,10 @@ const staticUser = {
   ]
 };
 
-const token = req.headers['authorization'];
-const expectedToken = `Bearer ${process.env.STATIC_BRIDGING_TOKEN}`;
 const authenticateStaticToken = (req, res, next) => {
   const token = req.headers['authorization'];
 
-  if (token !== expectedToken) {
+  if (!token || token !== process.env.STATIC_BRIDGING_TOKEN) {
     return res.status(401).json({
       status: 'error',
       statusCode: 401,
@@ -26,7 +24,7 @@ const authenticateStaticToken = (req, res, next) => {
     });
   }
 
-  // Simulasikan user login untuk static token
+  // Inject static user
   req.user = staticUser;
   next();
 };
