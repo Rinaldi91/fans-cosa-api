@@ -103,8 +103,8 @@ app.use('/api/static-token', staticTokenRoutes);
 app.use('/api/activity-log', activityLogRoutes);
 
 //Routes Bridgings
-app.use('/api/v1/bridging/glucose-test', testGlucosaBridgingRoutes);
-app.use('/api/v1/bridging/mapping-patient', mappingPatientRoutes);
+app.use('/v1/bridging/glucose-test', testGlucosaBridgingRoutes);
+app.use('/v1/bridging/mapping-patient', mappingPatientRoutes);
 
 // Health Check routes
 app.use('/health', healthRoutes);
