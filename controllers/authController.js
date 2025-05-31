@@ -73,21 +73,21 @@ const getOrCreateStaticToken = async (user, roleId) => {
     if (roleId === ROLES.USER_BRIDGING) {
         // Cek apakah sudah ada static token di database
         let staticToken = await getStaticTokenForUser(user.id);
-        
+
         if (!staticToken) {
             // Jika belum ada, generate token baru dan simpan ke database
             staticToken = await generateToken(user, roleId);
-            
+
             // Simpan token ke database (pastikan tabel static_tokens sudah ada)
             await db.query(
                 'INSERT INTO static_tokens (user_id, token, created_at) VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE token = VALUES(token), updated_at = NOW()',
                 [user.id, staticToken]
             );
         }
-        
+
         return staticToken;
     }
-    
+
     // Untuk role lain, langsung generate token biasa
     return await generateToken(user, roleId);
 };
@@ -164,6 +164,7 @@ const AuthController = {
                 const errors = validationResult(req);
                 if (!errors.isEmpty()) {
                     return res.status(400).json({
+                        statusCode: 400,
                         status: 'error',
                         message: 'Validation failed',
                         errors: errors.array()
@@ -176,6 +177,7 @@ const AuthController = {
                 const user = await User.findByEmail(email);
                 if (!user) {
                     return res.status(404).json({
+                        statusCode: 404,
                         status: 'error',
                         message: 'User not found',
                         data: null,
@@ -186,6 +188,7 @@ const AuthController = {
                 const isValid = await verifyPassword(password, user.password);
                 if (!isValid) {
                     return res.status(401).json({
+                        statusCode: 401,
                         status: 'error',
                         message: 'Invalid credentials',
                         data: null,
@@ -201,17 +204,15 @@ const AuthController = {
                 // Cek apakah user adalah User Bridging
                 const isUserBridging = roleId === ROLES.USER_BRIDGING;
 
-                // Generate token dengan expiry berdasarkan role
-                // const token = generateToken(user, roleId);
-                // const token = await generateToken(user, roleId);
+                // Generate token
                 const token = await getOrCreateStaticToken(user, roleId);
 
                 // Set cookie expiry berdasarkan role
                 const cookieExpiry = isUserBridging
-                    ? new Date(Date.now() + 10 * 365 * 24 * 60 * 60 * 1000) // 10 tahun untuk User Bridging
-                    : new Date(Date.now() + 24 * 60 * 60 * 1000); // 1 hari untuk role lainnya
+                    ? new Date(Date.now() + 10 * 365 * 24 * 60 * 60 * 1000) // 10 tahun
+                    : new Date(Date.now() + 24 * 60 * 60 * 1000); // 1 hari
 
-                // Kirim token dalam HTTP-only cookie
+                // Kirim token dalam cookie
                 res.cookie('token', token, {
                     httpOnly: true,
                     secure: process.env.NODE_ENV === 'production',
@@ -221,6 +222,7 @@ const AuthController = {
 
                 // Kirim response
                 const responseData = {
+                    statusCode: 200,
                     status: 'success',
                     message: 'Login successful',
                     data: {
@@ -239,6 +241,7 @@ const AuthController = {
             } catch (error) {
                 console.error('Login failed:', error.message);
                 res.status(500).json({
+                    statusCode: 500,
                     status: 'error',
                     message: 'Failed to log in',
                     data: { error: error.message },
@@ -246,6 +249,7 @@ const AuthController = {
             }
         },
     ],
+
 
     verifyToken: async (req, res) => {
         const token = req.cookies.token || req.headers.authorization?.split(' ')[1];
