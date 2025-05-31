@@ -148,13 +148,13 @@ const TestGlucosaBridgingModel = {
     },
 
 
-    insertGlucosaTest: async (data) => {
+    insertGlucosaTest: async (data, connection = db) => {
         try {
             const query = `
-                INSERT INTO fans_cosa_api_db.glucosa_test_bridgings 
-                (id, date_time, glucos_value, unit, patient_id, device_name, metode, is_validation) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            `;
+            INSERT INTO fans_cosa_api_db.glucosa_test_bridgings 
+            (id, date_time, glucos_value, unit, patient_id, device_name, metode, is_validation) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `;
 
             const values = [
                 data.id,
@@ -167,13 +167,14 @@ const TestGlucosaBridgingModel = {
                 data.is_validation
             ];
 
-            const [result] = await db.execute(query, values);
+            const [result] = await connection.execute(query, values);
             return result.affectedRows > 0;
         } catch (error) {
             console.error('Error inserting data into bridging database:', error);
             return false;
         }
     }
+
 
 }
 
