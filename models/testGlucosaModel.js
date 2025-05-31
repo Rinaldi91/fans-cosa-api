@@ -419,16 +419,6 @@ const TestGlucosaModel = {
         }
     },
 
-
-    IsValidationTest: async (id, userName, connection) => {
-        const [result] = await connection.query(
-            'UPDATE test_glucosa SET is_validation = 1, validated_by = ? WHERE id = ?',
-            [userName, id]
-        );
-        return result.affectedRows > 0;
-    }
-    ,
-
     getTestDataById: async (id) => {
         try {
             const [rows] = await db.query(`
