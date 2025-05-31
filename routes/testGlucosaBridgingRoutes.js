@@ -1,12 +1,12 @@
 const express = require('express');
 const testGlucosaBridgingController = require('../controllers/testGlucosaBridgingControllers');
 
-const { authenticateToken } = require('../config/auth');
+const authenticateStaticToken = require('../middleware/authStaticToken');
 const authorize = require('../middleware/rbac');
 
 const router = express.Router();
 
-router.use(authenticateToken);
+router.use(authenticateStaticToken);
 
 //Glucose Test All
 router.get('/', authorize('view_bridging_glucose_test'), testGlucosaBridgingController.getAllTestBridgingPatients);
