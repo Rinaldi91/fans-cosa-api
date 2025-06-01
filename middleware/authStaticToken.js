@@ -2,7 +2,7 @@ require('dotenv').config();
 
 const staticUser = {
   id: 11,
-  role_id: 5,
+  roleId : 5,
   name: 'User Bridging Mitra Sehat',
   email: 'bridging@gmail.com',
   role: 'User Bridging',
